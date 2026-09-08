@@ -36,9 +36,10 @@ public class CandidatureController {
     }
 
     @GetMapping("/candidatures")
-    public List<Candidature> getCandidatures() {
+    public List<CandidatureResponseDTO> getCandidatures() {
         User currentUser = getCurrentUser();
-        return candidatures.findByUser(currentUser);
+        List<Candidature> liste = candidatures.findByUser(currentUser);
+        return liste.stream().map(CandidatureResponseDTO::fromCandidature).toList();
     }
 
     @PostMapping("/candidatures")
