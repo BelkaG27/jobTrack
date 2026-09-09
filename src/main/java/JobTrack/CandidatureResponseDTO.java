@@ -48,4 +48,9 @@ public class CandidatureResponseDTO {
         return new CandidatureResponseDTO(candidature.getId(), candidature.getEntreprise(), candidature.getDate(), candidature.getLieu(), candidature.getStatut(), candidature.getPoste());
     }
 
+    public  Candidature toCandidature(){
+
+        return new Candidature(poste, entreprise, date, lieu, statut);
+    }
+
 }

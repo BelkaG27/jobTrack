@@ -43,32 +43,23 @@ public class CandidatureController {
     }
 
     @PostMapping("/candidatures")
-    public ResponseEntity<Candidature> addCandidature(@RequestBody @Valid Candidature candidature) {
+    public ResponseEntity<CandidatureResponseDTO> addCandidature(@RequestBody @Valid CandidatureRequestDTO candidatureDTO) {
         User currentUser = getCurrentUser();
+
+        Candidature candidature = candidatureDTO.toCandidature();
         candidature.setUser(currentUser);
         candidatures.save(candidature);
-        return ResponseEntity.ok(candidature);
+        return ResponseEntity.ok(CandidatureResponseDTO.fromCandidature(candidature));
     }
 
     @GetMapping("/candidatures/{id}")
-    public ResponseEntity<Candidature> getCandidatureById(@PathVariable int id){
-        // Candidature candidature = candidatures.stream()
-        //         .filter(c->c.getId() == id)
-        //         .findFirst().orElse(null);
-
-        // if(candidature != null){
-        //     return ResponseEntity.ok(candidature);
-        // } else {
-        //     return ResponseEntity.notFound().build();
-        // }
-
+    public ResponseEntity<CandidatureResponseDTO> getCandidatureById(@PathVariable int id){
         User currentUser = getCurrentUser();
-        return candidatures.findById(id).filter(c->c.getUser().getId() == currentUser.getId()).map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return candidatures.findById(id).filter(c->c.getUser().getId() == currentUser.getId()).map(CandidatureResponseDTO::fromCandidature).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/candidatures/{id}")
-    public ResponseEntity<Candidature> updateCandidature(@PathVariable int id, @RequestBody @Valid Candidature updatedCandidature){
+    public ResponseEntity<CandidatureResponseDTO> updateCandidature(@PathVariable int id, @RequestBody @Valid CandidatureRequestDTO updatedCandidature){
         User currentUser = getCurrentUser();
         Candidature existingCandidature = candidatures.findById(id).filter(c->c.getUser().getId() == currentUser.getId()).orElse(null);
 
@@ -80,7 +71,7 @@ public class CandidatureController {
             existingCandidature.setStatut(updatedCandidature.getStatut());
             
             candidatures.save(existingCandidature);
-            return ResponseEntity.ok(existingCandidature);
+            return ResponseEntity.ok(CandidatureResponseDTO.fromCandidature(existingCandidature));
         }
 
         return ResponseEntity.notFound().build();

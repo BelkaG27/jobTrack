@@ -9,7 +9,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
@@ -55,7 +54,7 @@ public class CandidatureControllerTest {
         candidatureTest.setUser(currentUser);
         when(candidatureRepository.findById(1)).thenReturn(Optional.of(candidatureTest));
 
-        ResponseEntity<Candidature> response = candidatureController.getCandidatureById(1);
+        ResponseEntity<CandidatureResponseDTO> response = candidatureController.getCandidatureById(1);
         assertEquals(200, response.getStatusCode().value());
         assertEquals("Poste Test", response.getBody().getPoste());
     }
@@ -64,18 +63,18 @@ public class CandidatureControllerTest {
     public void testGetCandidaturesById_Code404(){
         when(candidatureRepository.findById(99)).thenReturn(Optional.empty());
 
-        ResponseEntity<Candidature> response = candidatureController.getCandidatureById(99);
+        ResponseEntity<CandidatureResponseDTO> response = candidatureController.getCandidatureById(99);
         assertEquals(404, response.getStatusCode().value());
     }
 
     @Test
     public void testAddCandidature(){
         Candidature candidatureTest = new Candidature("Poste Test", "Entreprise Test", LocalDate.of(2026, 1, 1), "Lieu Test", Statut.EN_ATTENTE);
-        when(candidatureRepository.save(candidatureTest)).thenReturn((candidatureTest));
-
-        ResponseEntity<Candidature> response = candidatureController.addCandidature(candidatureTest);
+        when(candidatureRepository.save(any(Candidature.class))).thenReturn((candidatureTest));
+        
+        ResponseEntity<CandidatureResponseDTO> response = candidatureController.addCandidature(CandidatureRequestDTO.fromCandidature(candidatureTest));
         assertEquals("Poste Test", response.getBody().getPoste());
-        verify(candidatureRepository,times(1)).save(candidatureTest);
+        verify(candidatureRepository,times(1)).save(any(Candidature.class));
     }
 
     @Test
@@ -84,7 +83,7 @@ public class CandidatureControllerTest {
         Candidature candidatureTest2 = new Candidature("Poste Test", "Entreprise Test", LocalDate.of(2026, 1, 1), "Lieu Test", Statut.EN_ATTENTE);
         when(candidatureRepository.findByUser(currentUser)).thenReturn(List.of(candidatureTest1,candidatureTest2));
 
-        List<Candidature> response = candidatureController.getCandidatures();
+        List<CandidatureResponseDTO> response = candidatureController.getCandidatures();
         assertEquals(2, response.size());
     }
 
