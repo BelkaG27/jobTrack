@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import JobTrack.Exceptions.CandidatureNotFoundException;
+import JobTrack.Exceptions.GlobalExceptionHandler;
 import jakarta.validation.Valid;
 
 @RestController
@@ -55,7 +57,7 @@ public class CandidatureController {
     @GetMapping("/candidatures/{id}")
     public ResponseEntity<CandidatureResponseDTO> getCandidatureById(@PathVariable int id){
         User currentUser = getCurrentUser();
-        return candidatures.findById(id).filter(c->c.getUser().getId() == currentUser.getId()).map(CandidatureResponseDTO::fromCandidature).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        return candidatures.findById(id).filter(c->c.getUser().getId() == currentUser.getId()).map(CandidatureResponseDTO::fromCandidature).map(ResponseEntity::ok).orElseThrow(()-> new CandidatureNotFoundException("Candidature(s) not found"));
     }
 
     @PutMapping("/candidatures/{id}")
