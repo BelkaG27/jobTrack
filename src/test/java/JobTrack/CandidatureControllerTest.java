@@ -12,12 +12,17 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import JobTrack.Exceptions.CandidatureNotFoundException;
 import JobTrack.Exceptions.GlobalExceptionHandler;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -54,7 +59,7 @@ public class CandidatureControllerTest {
     }
 
     @Test 
-    public void testGlobalExceptionHandler(){
+    public void testHandleCandidatureNotFound(){
         CandidatureNotFoundException exception = new CandidatureNotFoundException("Candidature not found test"); 
         ResponseEntity<String> response = globalHandler.handleCandidatureNotFound(exception);
 
@@ -104,6 +109,20 @@ public class CandidatureControllerTest {
 
         List<CandidatureResponseDTO> response = candidatureController.getCandidatures();
         assertEquals(2, response.size());
+    }
+
+    @Test 
+    public void testHandleValidationErrors(){
+        FieldError fieldError = new FieldError("candidatureRequestDTO", "poste", "Le poste ne peut pas être vide");
+        BindingResult bindingResult = new BeanPropertyBindingResult(new CandidatureRequestDTO(),"candidatureRequestDTO");
+        bindingResult.addError(fieldError);
+        MethodArgumentNotValidException exception = new MethodArgumentNotValidException(null, bindingResult);
+
+        ResponseEntity<Map<String,String>> response = globalHandler.handleValidationErrors(exception);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Le poste ne peut pas être vide", response.getBody().get("poste"));
+
     }
 
 }

@@ -32,7 +32,8 @@ public class CandidatureRequestDTO {
         this.poste = poste;
     }
 
-
+    public CandidatureRequestDTO() {
+}
 
     public String getEntreprise() {
         return entreprise;
