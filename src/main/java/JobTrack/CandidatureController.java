@@ -3,7 +3,9 @@ package JobTrack;
 
 import java.util.List;
 import java.util.Optional;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -38,10 +40,10 @@ public class CandidatureController {
     }
 
     @GetMapping("/candidatures")
-    public List<CandidatureResponseDTO> getCandidatures() {
+    public PageResponseDTO<CandidatureResponseDTO> getCandidatures(Pageable pageable) {
         User currentUser = getCurrentUser();
-        List<Candidature> liste = candidatures.findByUser(currentUser);
-        return liste.stream().map(CandidatureResponseDTO::fromCandidature).toList();
+        Page<Candidature> page = candidatures.findByUser(currentUser,pageable);
+        return new PageResponseDTO<CandidatureResponseDTO>(page.getNumber(),page.getSize(), page.getTotalElements(), page.getTotalPages(), page.isLast(), page.map(CandidatureResponseDTO::fromCandidature).toList());
     }
 
     @PostMapping("/candidatures")

@@ -7,6 +7,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -108,11 +111,11 @@ public class CandidatureControllerTest {
     public void testGetCandidatures(){
         Candidature candidatureTest1 = new Candidature("Poste Test", "Entreprise Test", LocalDate.of(2026, 1, 1), "Lieu Test", Statut.EN_ATTENTE);        
         Candidature candidatureTest2 = new Candidature("Poste Test", "Entreprise Test", LocalDate.of(2026, 1, 1), "Lieu Test", Statut.EN_ATTENTE);
-        when(candidatureRepository.findByUser(currentUser)).thenReturn(List.of(candidatureTest1,candidatureTest2));
+        when(candidatureRepository.findByUser(any(User.class), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(candidatureTest1,candidatureTest2)));
         when(userRepository.findByUsername(currentUser.getUsername())).thenReturn(Optional.of(currentUser));
 
-        List<CandidatureResponseDTO> response = candidatureController.getCandidatures();
-        assertEquals(2, response.size());
+        PageResponseDTO<CandidatureResponseDTO> response = candidatureController.getCandidatures(PageRequest.of(0,10));
+        assertEquals(2, response.getContent().size());
     }
 
     @Test 
