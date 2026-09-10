@@ -7,7 +7,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.NotNull;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -40,7 +39,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7);
-        String username = jwtService.extractUsername(token);
+
+        String username = null;
+        try{
+            username = jwtService.extractUsername(token);
+        }
+        catch(Exception e){
+            System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>> JWT FILTER : " + request.getRequestURI());
+
+            authHeader = request.getHeader("Authorization");
+
+            System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>> AUTH HEADER : " + authHeader);
+            // Si le token est invalide, on ne fait rien et on laisse passer au filtre suivant
+        }
+        
 
         if(username !=null && SecurityContextHolder.getContext().getAuthentication()==null){
             UserDetails userDetails = customUserDetailService.loadUserByUsername(username);
