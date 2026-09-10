@@ -63,9 +63,9 @@ public class CandidatureController {
     @PutMapping("/candidatures/{id}")
     public ResponseEntity<CandidatureResponseDTO> updateCandidature(@PathVariable int id, @RequestBody @Valid CandidatureRequestDTO updatedCandidature){
         User currentUser = getCurrentUser();
-        Candidature existingCandidature = candidatures.findById(id).filter(c->c.getUser().getId() == currentUser.getId()).orElse(null);
+        Candidature existingCandidature = candidatures.findById(id).filter(c->c.getUser().getId() == currentUser.getId()).orElseThrow(()-> new CandidatureNotFoundException("Candidature(s) not found"));
 
-        if(existingCandidature != null){
+        
             existingCandidature.setPoste(updatedCandidature.getPoste());
             existingCandidature.setEntreprise(updatedCandidature.getEntreprise());
             existingCandidature.setDate(updatedCandidature.getDate());
@@ -74,22 +74,17 @@ public class CandidatureController {
             
             candidatures.save(existingCandidature);
             return ResponseEntity.ok(CandidatureResponseDTO.fromCandidature(existingCandidature));
-        }
-
-        return ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/candidatures/{id}")
     public ResponseEntity<Void> deleteCandidature(@PathVariable int id){
         User currentUser = getCurrentUser();
-        Candidature candidatureToDelete = candidatures.findById(id).filter(c->c.getUser().getId() == currentUser.getId()).orElse(null);
+        Candidature candidatureToDelete = candidatures.findById(id).filter(c->c.getUser().getId() == currentUser.getId()).orElseThrow(()-> new CandidatureNotFoundException("Candidature(s) not found"));
 
-        if(candidatureToDelete != null){
             candidatures.delete(candidatureToDelete);
             return ResponseEntity.noContent().build();
-        }
+        
 
-        return ResponseEntity.notFound().build();
     }
 
 

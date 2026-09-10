@@ -60,8 +60,6 @@ public class CandidatureRequestDTO {
         return new Candidature(poste, entreprise, date, lieu, statut);
     }
 
-    public static CandidatureRequestDTO fromCandidature(Candidature candidature){
-        return new CandidatureRequestDTO(candidature.getEntreprise(), candidature.getDate(), candidature.getLieu(), candidature.getStatut(), candidature.getPoste());
-    }
+    
 
 }

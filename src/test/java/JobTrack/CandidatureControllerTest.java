@@ -89,13 +89,17 @@ public class CandidatureControllerTest {
         assertThrows(CandidatureNotFoundException.class,()->candidatureController.getCandidatureById(99));
     }
 
+    public static CandidatureRequestDTO candidatureToDTO(Candidature candidature){
+        return new CandidatureRequestDTO(candidature.getEntreprise(), candidature.getDate(), candidature.getLieu(), candidature.getStatut(), candidature.getPoste());
+    }
+
     @Test
     public void testAddCandidature(){
         Candidature candidatureTest = new Candidature("Poste Test", "Entreprise Test", LocalDate.of(2026, 1, 1), "Lieu Test", Statut.EN_ATTENTE);
         when(candidatureRepository.save(any(Candidature.class))).thenReturn((candidatureTest));
         when(userRepository.findByUsername(currentUser.getUsername())).thenReturn(Optional.of(currentUser));
         
-        ResponseEntity<CandidatureResponseDTO> response = candidatureController.addCandidature(CandidatureRequestDTO.fromCandidature(candidatureTest));
+        ResponseEntity<CandidatureResponseDTO> response = candidatureController.addCandidature(candidatureToDTO(candidatureTest));
         assertEquals("Poste Test", response.getBody().getPoste());
         verify(candidatureRepository,times(1)).save(any(Candidature.class));
     }
