@@ -11,5 +11,19 @@ services:
     volumes:
       - jobtrack-data:/var/lib/postgresql/data
 
+  app:
+    build: .
+    container_name: jobtrack-app
+    depends_on:
+      - postgres
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/jobtrack
+      DB_USERNAME: jobtrack_user
+      DB_PASSWORD: jobtrack_pass
+      JWT_SECRET: bjveuvBVUJBJVNBikvnbEUVJBbujfbeuikzbveujejvubevhebsvbehvbevbehb123456789
+      JWT_EXPIRATION: 86400000
+    ports:
+      - "8080:8080"
+
 volumes:
   jobtrack-data:
