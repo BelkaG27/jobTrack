@@ -1,0 +1,50 @@
+name : CI
+
+on : 
+  push :
+    branches : [main]
+  pull_request :
+    branches : [main]
+
+
+jobs : 
+  build-and-test :
+    runs-on : ubuntu-latest
+
+    env:
+        DB_URL: jdbc:postgresql://localhost:5432/jobtrack
+        DB_USERNAME: jobtrack_user
+        DB_PASSWORD: jobtrack_pass
+        JWT_SECRET: bjveuvBVUJBJVNBikvnbEUVJBbujfbeuikzbveujejvubevhebsvbehvbevbehb123456789
+        JWT_EXPIRATION: 86400000
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: jobtrack
+          POSTGRES_USER: jobtrack_user
+          POSTGRES_PASSWORD: jobtrack_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps :
+      - name : Recuperation du code
+        uses : actions/checkout@v4
+      
+      - name : Installation de Java
+        uses : actions/setup-java@v4
+        with : 
+          java-version : '21'
+          distribution : 'temurin'
+
+      - name: Rendre mvnw exécutable
+        run: chmod +x mvnw
+
+      - name : Lancer les tests
+        run : ./mvnw test
