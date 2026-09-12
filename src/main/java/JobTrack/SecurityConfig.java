@@ -29,6 +29,9 @@ public class SecurityConfig {
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    @Autowired 
+    private RateLimitingFilter rateLimitingFilter;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -71,7 +74,7 @@ public class SecurityConfig {
             .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // on ne crée pas de session (on utilise des tokens)
             .authenticationProvider(authenticationProvider()) // on utilise notre provider d'authentification (qui vérifie le username et le mot de passe)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class); // on ajoute notre filtre d'authentification JWT avant le filtre d'authentification par défaut (qui vérifie le username et le mot de passe)
-
+            //http.addFilterAfter(rateLimitingFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 
