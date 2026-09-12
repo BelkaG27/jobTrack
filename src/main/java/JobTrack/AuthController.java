@@ -28,6 +28,9 @@ public class AuthController {
         if(userRepository.findByUsername(request.getUsername()).isPresent()){
             return ResponseEntity.badRequest().body("Username already exists");
         }
+        if(userRepository.findByEmail(request.getEmail()).isPresent()){
+            return ResponseEntity.badRequest().body("Email already exists");
+        }
 
         User newUser = new User();
         newUser.setUsername(request.getUsername());

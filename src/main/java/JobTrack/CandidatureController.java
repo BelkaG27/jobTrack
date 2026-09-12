@@ -1,10 +1,7 @@
 package JobTrack;
 
 
-import java.util.List;
-import java.util.Optional;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-
 import JobTrack.Exceptions.CandidatureNotFoundException;
-import JobTrack.Exceptions.GlobalExceptionHandler;
 import jakarta.validation.Valid;
 
 @RestController
@@ -33,7 +28,6 @@ public class CandidatureController {
     private UserRepository users;
 
     private User getCurrentUser(){
-
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String name = authentication.getName();
         return users.findByUsername(name).orElseThrow(() -> new RuntimeException("User not found"));
