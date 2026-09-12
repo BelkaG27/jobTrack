@@ -21,7 +21,9 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import JobTrack.Exceptions.CandidatureNotFoundException;
+import JobTrack.Exceptions.EmailAlreadyExistsException;
 import JobTrack.Exceptions.GlobalExceptionHandler;
+import JobTrack.Exceptions.UsernameAlreadyExistsException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -68,6 +70,24 @@ public class CandidatureControllerTest {
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertEquals("Candidature not found test", response.getBody());
+    }
+
+    @Test
+    public void testUsernameAlreadyExists(){
+        UsernameAlreadyExistsException exception = new UsernameAlreadyExistsException("Username already exists test");
+        ResponseEntity<String> response = globalHandler.handleUsernameAlredyExists(exception);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("Username already exists test", response.getBody());
+    }
+
+    @Test
+    public void testEmailAlreadyExists(){
+        EmailAlreadyExistsException exception = new EmailAlreadyExistsException("Email already exists test");
+        ResponseEntity<String> response = globalHandler.handleEmailAlredyExists(exception);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("Email already exists test", response.getBody());
     }
 
 

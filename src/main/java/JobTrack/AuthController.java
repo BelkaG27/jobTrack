@@ -7,6 +7,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import JobTrack.Exceptions.EmailAlreadyExistsException;
+import JobTrack.Exceptions.UsernameAlreadyExistsException;
+
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -26,10 +29,10 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request){
         if(userRepository.findByUsername(request.getUsername()).isPresent()){
-            return ResponseEntity.badRequest().body("Username already exists");
+            throw new UsernameAlreadyExistsException("Username already exists");
         }
         if(userRepository.findByEmail(request.getEmail()).isPresent()){
-            return ResponseEntity.badRequest().body("Email already exists");
+            throw new EmailAlreadyExistsException("Email already exists");
         }
 
         User newUser = new User();
