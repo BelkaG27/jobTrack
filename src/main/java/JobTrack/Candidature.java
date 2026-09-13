@@ -2,6 +2,7 @@ package JobTrack;
 
 import java.time.LocalDate;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Entity;
@@ -27,6 +28,7 @@ public class Candidature {
     @NotBlank(message = "Le nom de l'entreprise ne peut pas être vide")
     private String entreprise;
 
+    @JsonFormat(pattern = "yyyy-MM-dd")
     @NotNull(message = "La date ne peut pas être vide")
     private LocalDate date;
 

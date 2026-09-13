@@ -20,10 +20,14 @@ import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 
+import tools.jackson.core.JacksonException;
+
 import JobTrack.Exceptions.CandidatureNotFoundException;
 import JobTrack.Exceptions.EmailAlreadyExistsException;
 import JobTrack.Exceptions.GlobalExceptionHandler;
 import JobTrack.Exceptions.UsernameAlreadyExistsException;
+import tools.jackson.databind.exc.InvalidFormatException;
+import tools.jackson.databind.exc.MismatchedInputException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -33,6 +37,8 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 @ExtendWith(MockitoExtension.class)
 public class CandidatureControllerTest {
@@ -150,6 +156,31 @@ public class CandidatureControllerTest {
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("Le poste ne peut pas être vide", response.getBody().get("poste"));
 
+    }
+
+    @Test
+    public void testMessageNotReadableException(){
+        
+        // test 1er cas
+        
+        InvalidFormatException cause = InvalidFormatException.from(null, "Cannot deserialize value", "valeur-invalide",LocalDate.class);
+        HttpMessageNotReadableException exception = new HttpMessageNotReadableException(null,cause,null);
+
+        ResponseEntity<String> response = globalHandler.handleHttpMessageNotReadable(exception);
+
+        assertEquals("le format de la date doit etre yyyy-MM-dd", response.getBody());
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+
+        // test 2eme cas
+
+        MismatchedInputException cause2 = MismatchedInputException.from(null,String.class,"message d'erreur");
+        cause2.prependPath(new JacksonException.Reference(null, "nomDuChamp"));
+        HttpMessageNotReadableException exception2 = new HttpMessageNotReadableException(null,cause2, null);
+
+        ResponseEntity<String> response2 = globalHandler.handleHttpMessageNotReadable(exception2);
+
+        assertEquals("le format du champ nomDuChamp est invalide !", response2.getBody());
+        assertEquals(HttpStatus.BAD_REQUEST, response2.getStatusCode());
     }
 
 }
