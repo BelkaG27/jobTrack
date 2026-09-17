@@ -21,6 +21,8 @@ API REST de suivi de candidatures, sécurisée par authentification JWT, dévelo
 - Migrations de base de données versionnées (Flyway)
 - Conteneurisation complète (backend + base de données)
 - Intégration continue (GitHub Actions)
+- Déploiement conditionné à la réussite des tests (le déploiement sur Render n'est déclenché que si le pipeline CI passe)
+- Limitation du nombre de requêtes (rate limiting) par IP ou par utilisateur
 
 ## Stack technique
 
@@ -29,6 +31,7 @@ API REST de suivi de candidatures, sécurisée par authentification JWT, dévelo
 - **PostgreSQL** (base de données relationnelle)
 - **Flyway** (migrations de schéma versionnées)
 - **JWT** (io.jsonwebtoken / JJWT) pour l'authentification stateless
+- **Bucket4j** pour le rate limiting (algorithme token bucket)
 - **Swagger / OpenAPI** (springdoc-openapi) pour la documentation
 - **Docker** (conteneurisation du backend et de la base de données)
 - **Maven** (gestion des dépendances et du build)
@@ -151,6 +154,10 @@ Les erreurs sont centralisées et renvoyées au format JSON.
 }
 ```
 
+## Rate limiting
+
+Chaque client (IP pour les routes `/auth/**`, nom d'utilisateur pour les routes authentifiées) dispose d'un quota de **20 requêtes**, réalimenté à raison de **10 requêtes par minute**. Au-delà, l'API répond avec le code **429 (Too Many Requests)**.
+
 ## Migrations de base de données
 
 Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resources/db/migration`, nommés `V<numéro>__description.sql`. `spring.jpa.hibernate.ddl-auto` est configuré sur `validate` : Hibernate vérifie que les entités correspondent au schéma, mais ne le modifie jamais lui-même.
@@ -170,6 +177,8 @@ Un pipeline GitHub Actions (`.github/workflows/ci.yml`) exécute automatiquement
 ## Déploiement
 
 Le backend est conteneurisé via `Dockerfile` (build multi-stage) et déployé sur Render, avec une base PostgreSQL managée. Les valeurs sensibles (identifiants de base de données, secret JWT) sont injectées via des variables d'environnement, jamais commitées dans le dépôt.
+
+Le déploiement est **conditionné à la réussite des tests** : si le pipeline CI échoue (ex : un test casse), le déploiement sur Render n'est pas déclenché, ce qui évite de mettre en production une version défectueuse.
 
 ## Auteur
 
