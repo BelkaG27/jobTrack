@@ -8,7 +8,7 @@ import jakarta.validation.constraints.NotNull;
 public class CandidatureRequestDTO {
 
 
-     @NotBlank(message = "Le poste ne peut pas être vide")
+    @NotBlank(message = "Le poste ne peut pas être vide")
     private   String poste;
 
     @NotBlank(message = "Le nom de l'entreprise ne peut pas être vide")

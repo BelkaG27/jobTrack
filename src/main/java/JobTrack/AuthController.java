@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import JobTrack.Exceptions.EmailAlreadyExistsException;
 import JobTrack.Exceptions.UsernameAlreadyExistsException;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/auth")
@@ -27,7 +28,7 @@ public class AuthController {
     private UserRepository userRepository;
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request){
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request){
         if(userRepository.findByUsername(request.getUsername()).isPresent()){
             throw new UsernameAlreadyExistsException("Username already exists");
         }
@@ -49,7 +50,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request){
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request){
         System.out.println(">>> LOGIN CONTROLLER");
 
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
