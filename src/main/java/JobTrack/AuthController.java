@@ -1,6 +1,10 @@
 package JobTrack;
 
+import java.security.NoSuchAlgorithmException;
+
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -8,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import JobTrack.Exceptions.EmailAlreadyExistsException;
+import JobTrack.Exceptions.InvalidRefreshTokenException;
 import JobTrack.Exceptions.UsernameAlreadyExistsException;
 import jakarta.validation.Valid;
 
@@ -27,8 +32,14 @@ public class AuthController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired 
+    private RefreshTokenService refreshTokenService;
+
+    @Autowired 
+    private RefreshTokenRepository refreshTokenRepository;
+
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request){
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request)throws NoSuchAlgorithmException{
         if(userRepository.findByUsername(request.getUsername()).isPresent()){
             throw new UsernameAlreadyExistsException("Username already exists");
         }
@@ -46,16 +57,28 @@ public class AuthController {
         userRepository.save(newUser);
 
         String token = jwtService.generateToken(newUser.getUsername());
-        return ResponseEntity.ok(new AuthResponse(token));
+        String refreshToken = refreshTokenService.createRefreshToken(newUser);
+        return ResponseEntity.ok(new AuthResponse(token,refreshToken));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request){
-        System.out.println(">>> LOGIN CONTROLLER");
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request)throws NoSuchAlgorithmException{
 
+        System.out.println(">>> LOGIN CONTROLLER");
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         System.out.println(">>> AUTHENTICATION SUCCESSFUL");
+
         String token = jwtService.generateToken(request.getUsername());
-        return ResponseEntity.ok(new AuthResponse(token));
+        Optional<User> user = userRepository.findByUsername(request.getUsername());
+        String refreshToken = refreshTokenService.createRefreshToken(user.get());
+        return ResponseEntity.ok(new AuthResponse(token,refreshToken));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(@Valid @RequestBody RefreshRequest request)throws NoSuchAlgorithmException{
+        VerifyRefreshResponse response = refreshTokenService.verifyRefreshToken(request.getToken());
+        String access = jwtService.generateToken(response.getUser().getUsername());
+
+        return ResponseEntity.ok(new AuthResponse(access, response.getRefreshToken()));
     }
 }

@@ -60,16 +60,15 @@ public class CandidatureController {
     public ResponseEntity<CandidatureResponseDTO> updateCandidature(@PathVariable int id, @RequestBody @Valid CandidatureRequestDTO updatedCandidature){
         User currentUser = getCurrentUser();
         Candidature existingCandidature = candidatures.findById(id).filter(c->c.getUser().getId() == currentUser.getId()).orElseThrow(()-> new CandidatureNotFoundException("Candidature(s) not found"));
-
         
-            existingCandidature.setPoste(updatedCandidature.getPoste());
-            existingCandidature.setEntreprise(updatedCandidature.getEntreprise());
-            existingCandidature.setDate(updatedCandidature.getDate());
-            existingCandidature.setLieu(updatedCandidature.getLieu());
-            existingCandidature.setStatut(updatedCandidature.getStatut());
-            
-            candidatures.save(existingCandidature);
-            return ResponseEntity.ok(CandidatureResponseDTO.fromCandidature(existingCandidature));
+        existingCandidature.setPoste(updatedCandidature.getPoste());
+        existingCandidature.setEntreprise(updatedCandidature.getEntreprise());
+        existingCandidature.setDate(updatedCandidature.getDate());
+        existingCandidature.setLieu(updatedCandidature.getLieu());
+        existingCandidature.setStatut(updatedCandidature.getStatut());
+        
+        candidatures.save(existingCandidature);
+        return ResponseEntity.ok(CandidatureResponseDTO.fromCandidature(existingCandidature));
     }
 
     @DeleteMapping("/candidatures/{id}")

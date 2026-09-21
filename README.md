@@ -23,6 +23,7 @@ API REST de suivi de candidatures, sécurisée par authentification JWT, dévelo
 - Intégration continue (GitHub Actions)
 - Déploiement conditionné à la réussite des tests (le déploiement sur Render n'est déclenché que si le pipeline CI passe)
 - Limitation du nombre de requêtes (rate limiting) par IP ou par utilisateur
+- Authentification à deux tokens (access token courte durée + refresh token longue durée), avec rotation et révocation en cascade en cas de vol détecté
 
 ## Stack technique
 
@@ -77,15 +78,50 @@ Pour tester les endpoints protégés depuis Swagger :
 
 ## Authentification
 
-| Méthode | URL             | Description                            |
-|---------|------------------|------------------------------------------|
-| POST    | /auth/register   | Créer un compte, retourne un token JWT   |
-| POST    | /auth/login      | Se connecter, retourne un token JWT      |
+L'API utilise un système à **deux tokens** :
+
+| Token | Durée de vie | Rôle |
+|---|---|---|
+| **Access token** (JWT) | 15 minutes | Envoyé à chaque requête vers les routes protégées |
+| **Refresh token** | 7 jours | Utilisé uniquement pour obtenir un nouvel access token, via `/auth/refresh` |
+
+| Méthode | URL             | Description                                        |
+|---------|------------------|------------------------------------------------------|
+| POST    | /auth/register   | Créer un compte, retourne un access token + un refresh token |
+| POST    | /auth/login      | Se connecter, retourne un access token + un refresh token    |
+| POST    | /auth/refresh    | Échanger un refresh token valide contre une nouvelle paire de tokens |
+
+Réponse type de `/auth/register`, `/auth/login` et `/auth/refresh` :
+```json
+{
+  "accessToken": "eyJhbGciOi...",
+  "refreshToken": "K3f9sQ2m..."
+}
+```
 
 Toutes les routes `/candidatures/**` nécessitent un header :
 ```
-Authorization: Bearer <votre_token>
+Authorization: Bearer <access_token>
 ```
+
+### Rafraîchir un access token expiré
+
+```
+POST /auth/refresh
+```
+```json
+{
+  "token": "<refresh_token>"
+}
+```
+
+### Sécurité du refresh token
+
+- Le refresh token n'est jamais stocké en clair en base de données : seul son **hash SHA-256** est conservé.
+- **Rotation à chaque utilisation** : à chaque appel à `/auth/refresh`, le refresh token utilisé est invalidé et un nouveau est renvoyé. Un même refresh token ne peut donc servir qu'une seule fois.
+- **Détection de vol et révocation en cascade** : si un refresh token déjà utilisé (donc déjà révoqué) est présenté à nouveau, l'API considère qu'il a été volé/intercepté et révoque **immédiatement tous les refresh tokens actifs de l'utilisateur concerné**, le forçant à se reconnecter avec son mot de passe.
+- Un refresh token invalide, expiré ou déjà utilisé renvoie une erreur **401 (Unauthorized)**.
+- Les refresh tokens révoqués ou expirés sont automatiquement purgés de la base de données par une tâche planifiée (`@Scheduled`), exécutée toutes les 15 minutes.
 
 ## Endpoints des candidatures
 
@@ -146,6 +182,11 @@ Les erreurs sont centralisées et renvoyées au format JSON.
 "Candidature(s) not found"
 ```
 
+**Refresh token invalide, expiré ou déjà utilisé (401)**
+```json
+"ce token a expiré !"
+```
+
 **Erreur de validation (400)**
 ```json
 {
@@ -160,7 +201,7 @@ Chaque client (IP pour les routes `/auth/**`, nom d'utilisateur pour les routes 
 
 ## Migrations de base de données
 
-Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resources/db/migration`, nommés `V<numéro>__description.sql`. `spring.jpa.hibernate.ddl-auto` est configuré sur `validate` : Hibernate vérifie que les entités correspondent au schéma, mais ne le modifie jamais lui-même.
+Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resources/db/migration`, nommés `V<numéro>__description.sql` (`V1` pour le schéma initial, `V2` pour la table `refresh_token`). `spring.jpa.hibernate.ddl-auto` est configuré sur `validate` : Hibernate vérifie que les entités correspondent au schéma, mais ne le modifie jamais lui-même.
 
 ## Lancer les tests
 
@@ -168,7 +209,7 @@ Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resourc
 ./mvnw test
 ```
 
-Inclut des tests unitaires sur le contrôleur des candidatures (repositories mockés, contexte de sécurité simulé) ainsi que des tests du gestionnaire d'erreurs centralisé.
+Inclut des tests unitaires sur le contrôleur des candidatures (repositories mockés, contexte de sécurité simulé), sur le gestionnaire d'erreurs centralisé, ainsi que sur le service de refresh tokens (création, rotation, détection de réutilisation avec révocation en cascade, expiration).
 
 ## Intégration continue
 

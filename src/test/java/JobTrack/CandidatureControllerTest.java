@@ -182,5 +182,4 @@ public class CandidatureControllerTest {
         assertEquals("le format du champ nomDuChamp est invalide !", response2.getBody());
         assertEquals(HttpStatus.BAD_REQUEST, response2.getStatusCode());
     }
-
 }
