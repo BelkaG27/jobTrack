@@ -96,4 +96,36 @@ public class RefreshTokensTest {
         assertEquals(refreshToken.get(0).isRevoked(), true);
         assertEquals(refreshToken.get(1).isRevoked(), false);
     }
+
+    @Test 
+    public void testLogoutTokenRevoked()throws NoSuchAlgorithmException{
+        String token = "blabla";
+        RefreshToken rt = new RefreshToken(refreshTokenService.hashToken(token), new User(), LocalDateTime.now().plusMinutes(15));
+        rt.setRevoked(true);
+        when(refreshTokenRepository.findByTokenHash(refreshTokenService.hashToken(token))).thenReturn(Optional.of(rt));
+
+        assertThrows(InvalidRefreshTokenException.class,()->refreshTokenService.logout(token));
+        verify(refreshTokenRepository,times(1)).revokeAllByUser(any(User.class));
+    }
+
+    @Test
+    public void testLogoutTokenExpired()throws NoSuchAlgorithmException{
+        String token = "blabla";
+        RefreshToken rt = new RefreshToken(refreshTokenService.hashToken(token), new User(), LocalDateTime.now().minusMinutes(15));
+        rt.setRevoked(false);
+        when(refreshTokenRepository.findByTokenHash(refreshTokenService.hashToken(token))).thenReturn(Optional.of(rt));
+
+        assertThrows(InvalidRefreshTokenException.class,()->refreshTokenService.logout(token));
+    }
+
+    @Test
+    public void testLogoutSuccess()throws NoSuchAlgorithmException{
+        String token = "blabla";
+        RefreshToken rt = new RefreshToken(refreshTokenService.hashToken(token), new User(), LocalDateTime.now().plusMinutes(15));
+        rt.setRevoked(false);
+        when(refreshTokenRepository.findByTokenHash(refreshTokenService.hashToken(token))).thenReturn(Optional.of(rt));
+
+        refreshTokenService.logout(token);
+        verify(refreshTokenRepository,times(1)).revokeAllByUser(any(User.class));
+    }
 }

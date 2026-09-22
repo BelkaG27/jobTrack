@@ -75,6 +75,19 @@ public class RefreshTokenService {
 
     }
 
+    @Transactional 
+    public void logout(String token)throws NoSuchAlgorithmException{
+        RefreshToken rt = refreshTokenRepo.findByTokenHash(hashToken(token)).orElseThrow(()->new InvalidRefreshTokenException("le token saisie n'existe pas !"));
+        if(rt.isRevoked()){
+            refreshTokenRepo.revokeAllByUser(rt.getUser());
+            throw new InvalidRefreshTokenException("ce token a déja été utilisé !");
+        }
+        if(rt.getExpiryDate().isBefore(LocalDateTime.now())){
+            throw new InvalidRefreshTokenException("ce token a expiré !");
+        }
+        refreshTokenRepo.revokeAllByUser(rt.getUser());
+    }
+
     @Scheduled(fixedRate = 900000)
     public void nettoyerRefreshRepo(){
         refreshTokenRepo.deleteRevokedAndExpired();

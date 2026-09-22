@@ -81,4 +81,10 @@ public class AuthController {
 
         return ResponseEntity.ok(new AuthResponse(access, response.getRefreshToken()));
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@Valid @RequestBody LogoutRequest request)throws NoSuchAlgorithmException{
+        refreshTokenService.logout(request.getToken());
+        return ResponseEntity.accepted().body("logout successful !");
+    }
 }

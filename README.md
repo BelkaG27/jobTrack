@@ -90,6 +90,7 @@ L'API utilise un système à **deux tokens** :
 | POST    | /auth/register   | Créer un compte, retourne un access token + un refresh token |
 | POST    | /auth/login      | Se connecter, retourne un access token + un refresh token    |
 | POST    | /auth/refresh    | Échanger un refresh token valide contre une nouvelle paire de tokens |
+| POST    | /auth/logout     | Révoquer tous les refresh tokens actifs de l'utilisateur (déconnexion) |
 
 Réponse type de `/auth/register`, `/auth/login` et `/auth/refresh` :
 ```json
@@ -114,6 +115,19 @@ POST /auth/refresh
   "token": "<refresh_token>"
 }
 ```
+
+### Se déconnecter
+
+```
+POST /auth/logout
+```
+```json
+{
+  "token": "<refresh_token>"
+}
+```
+
+Révoque immédiatement tous les refresh tokens actifs de l'utilisateur propriétaire du token envoyé. Si le token présenté est invalide, déjà révoqué (signe possible de vol) ou expiré, une erreur 401 est renvoyée — mais dans le cas "déjà révoqué", la révocation en cascade de tous les tokens de l'utilisateur est tout de même déclenchée par précaution.
 
 ### Sécurité du refresh token
 
@@ -209,7 +223,7 @@ Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resourc
 ./mvnw test
 ```
 
-Inclut des tests unitaires sur le contrôleur des candidatures (repositories mockés, contexte de sécurité simulé), sur le gestionnaire d'erreurs centralisé, ainsi que sur le service de refresh tokens (création, rotation, détection de réutilisation avec révocation en cascade, expiration).
+Inclut des tests unitaires sur le contrôleur des candidatures (repositories mockés, contexte de sécurité simulé), sur le gestionnaire d'erreurs centralisé, ainsi que sur le service de refresh tokens (création, rotation, détection de réutilisation avec révocation en cascade, expiration, logout).
 
 ## Intégration continue
 
