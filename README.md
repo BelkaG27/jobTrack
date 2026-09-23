@@ -24,6 +24,7 @@ API REST de suivi de candidatures, sécurisée par authentification JWT, dévelo
 - Déploiement conditionné à la réussite des tests (le déploiement sur Render n'est déclenché que si le pipeline CI passe)
 - Limitation du nombre de requêtes (rate limiting) par IP ou par utilisateur
 - Authentification à deux tokens (access token courte durée + refresh token longue durée), avec rotation et révocation en cascade en cas de vol détecté
+- Supervision de l'application via Spring Boot Actuator (santé, métriques, configuration)
 
 ## Stack technique
 
@@ -234,6 +235,20 @@ Un pipeline GitHub Actions (`.github/workflows/ci.yml`) exécute automatiquement
 Le backend est conteneurisé via `Dockerfile` (build multi-stage) et déployé sur Render, avec une base PostgreSQL managée. Les valeurs sensibles (identifiants de base de données, secret JWT) sont injectées via des variables d'environnement, jamais commitées dans le dépôt.
 
 Le déploiement est **conditionné à la réussite des tests** : si le pipeline CI échoue (ex : un test casse), le déploiement sur Render n'est pas déclenché, ce qui évite de mettre en production une version défectueuse.
+
+## Supervision (Spring Boot Actuator)
+
+L'application expose des endpoints de supervision via [Spring Boot Actuator](https://docs.spring.io/spring-boot/reference/actuator/index.html), sous `/actuator`.
+
+| Endpoint | Description |
+|---|---|
+| `/actuator/health` | État de santé de l'application (base de données, etc.) |
+| `/actuator/info` | Métadonnées de l'application (nom, version, description) |
+| `/actuator/metrics` | Métriques internes (mémoire, requêtes HTTP, temps de réponse...) |
+| `/actuator/env` | Variables d'environnement chargées par l'application |
+| `/actuator/beans` | Liste des composants (beans) Spring de l'application |
+
+> ⚠️ Ces endpoints sont actuellement **publics** (pas d'authentification requise), le temps que la gestion des rôles utilisateurs (admin/utilisateur) soit mise en place. `/actuator/env` et `/actuator/beans` exposent des informations internes sensibles et seront restreints aux administrateurs une fois ce mécanisme d'autorisation ajouté.
 
 ## Auteur
 

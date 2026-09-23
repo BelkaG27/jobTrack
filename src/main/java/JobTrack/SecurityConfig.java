@@ -69,6 +69,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth->auth
                 .requestMatchers("/auth/**").permitAll() // on autorise l'accès à /auth/** sans authentification (requetes login/register)
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
                 .anyRequest().authenticated() // toutes les autres requetes nécessitent une authentification (get/post/put/delete)
             )
             .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // on ne crée pas de session (on utilise des tokens)
