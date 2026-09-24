@@ -248,7 +248,7 @@ L'application expose des endpoints de supervision via [Spring Boot Actuator](htt
 | `/actuator/env` | Variables d'environnement chargées par l'application |
 | `/actuator/beans` | Liste des composants (beans) Spring de l'application |
 
-> ⚠️ Ces endpoints sont actuellement **publics** (pas d'authentification requise), le temps que la gestion des rôles utilisateurs (admin/utilisateur) soit mise en place. `/actuator/env` et `/actuator/beans` exposent des informations internes sensibles et seront restreints aux administrateurs une fois ce mécanisme d'autorisation ajouté.
+> Ces endpoints sont actuellement **publics** (pas d'authentification requise), le temps que la gestion des rôles utilisateurs (admin/utilisateur) soit mise en place. `/actuator/env` et `/actuator/beans` exposent des informations internes sensibles et seront restreints aux administrateurs une fois ce mécanisme d'autorisation ajouté.
 
 ## Auteur
 

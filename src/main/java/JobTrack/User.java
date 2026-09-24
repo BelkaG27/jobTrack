@@ -2,10 +2,13 @@ package JobTrack;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import jakarta.persistence.CascadeType;
@@ -48,14 +51,18 @@ public class User implements UserDetails{
     @OneToMany(mappedBy = "user",cascade = CascadeType.ALL,orphanRemoval = true)
     private List<Candidature> candidatures;
 
+    @NotNull(message = "Le role ne peut pas etre vide")
+    private Role role; 
+
     public User() {}
 
-    public User(String username, String password, String email, String specialty, int yearsOfExperience) {
+    public User(String username, String password, String email, String specialty, int yearsOfExperience,Role role) {
         this.username = username;
         this.password = password;
         this.email = email;
         this.specialty = specialty;
         this.yearsOfExperience = yearsOfExperience;
+        this.role=role;
     }
 
     public int getId() {
@@ -117,9 +124,17 @@ public class User implements UserDetails{
         this.candidatures = candidatures;
     }
 
+    public Role getRole(){
+        return this.role;
+    }
+
+    public void setRole(Role role){
+        this.role=role;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return new ArrayList<>();
+        return List.of(new SimpleGrantedAuthority(getRole().name()));
     }
 
     @Override

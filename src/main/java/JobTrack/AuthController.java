@@ -53,6 +53,7 @@ public class AuthController {
         newUser.setEmail(request.getEmail());
         newUser.setSpecialty(request.getSpecialty());
         newUser.setYearsOfExperience(request.getYearsOfExperience());
+        newUser.setRole(Role.ROLE_USER);
 
         userRepository.save(newUser);
 

@@ -4,5 +4,6 @@ public enum Statut {
     ENVOYE,
     EN_ATTENTE,
     ACCEPTEE,
-    REFUSEE
+    REFUSEE,
+    ENTRETIEN_PROGRAMME
 }

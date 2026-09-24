@@ -59,7 +59,7 @@ public class CandidatureControllerTest {
     @BeforeEach 
     public void setUp(){
         globalHandler = new GlobalExceptionHandler(); 
-        currentUser = new User("bbk","bbk","smaili@gmail.com","java",5);
+        currentUser = new User("bbk","bbk","smaili@gmail.com","java",5,Role.ROLE_ADMIN);
         UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(currentUser,null,currentUser.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(authToken);
     }

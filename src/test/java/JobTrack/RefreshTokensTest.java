@@ -35,7 +35,7 @@ public class RefreshTokensTest {
 
     @Test 
     public void testCreateRefreshToken()throws NoSuchAlgorithmException{
-        User user = new User("bbk", "bbk", "smaili@gmail.com", "bbk", 1);
+        User user = new User("bbk", "bbk", "smaili@gmail.com", "bbk", 1,Role.ROLE_ADMIN);
         ArgumentCaptor<RefreshToken> captor = ArgumentCaptor.forClass(RefreshToken.class);
         String response = refreshTokenService.createRefreshToken(user); 
         
@@ -80,7 +80,7 @@ public class RefreshTokensTest {
 
     @Test 
     public void testTokenSuccess()throws NoSuchAlgorithmException{
-        User user =  new User("bbk", "bbk", "smaili@gmail.com", "bbk", 1);
+        User user =  new User("bbk", "bbk", "smaili@gmail.com", "bbk", 1,Role.ROLE_ADMIN);
         ArgumentCaptor<RefreshToken> captor = ArgumentCaptor.forClass(RefreshToken.class);
         String token = "blabla";
         RefreshToken rt = new RefreshToken(refreshTokenService.hashToken(token), user, LocalDateTime.now().plusMinutes(15));
