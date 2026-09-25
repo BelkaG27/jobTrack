@@ -25,6 +25,7 @@ API REST de suivi de candidatures, sécurisée par authentification JWT, dévelo
 - Limitation du nombre de requêtes (rate limiting) par IP ou par utilisateur
 - Authentification à deux tokens (access token courte durée + refresh token longue durée), avec rotation et révocation en cascade en cas de vol détecté
 - Supervision de l'application via Spring Boot Actuator (santé, métriques, configuration)
+- Gestion des rôles (utilisateur / administrateur) avec restriction d'accès aux endpoints sensibles
 
 ## Stack technique
 
@@ -64,7 +65,7 @@ docker compose up -d --build
 
 L'API est accessible sur `http://localhost:8080`.
 
-> Le projet est configuré pour fonctionner via Docker : les identifiants de base de données et le secret JWT sont fournis comme variables d'environnement dans `docker-compose.yml`, aucune valeur sensible n'est codée en dur dans `application.properties`.
+> Le projet est configuré pour fonctionner via Docker : les identifiants de base de données, le secret JWT et le mot de passe de l'administrateur (`ADMIN_PASSWORD`) sont fournis comme variables d'environnement dans `docker-compose.yml`, aucune valeur sensible n'est codée en dur dans `application.properties`.
 
 ### 3. Documentation interactive (Swagger UI)
 
@@ -216,7 +217,7 @@ Chaque client (IP pour les routes `/auth/**`, nom d'utilisateur pour les routes 
 
 ## Migrations de base de données
 
-Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resources/db/migration`, nommés `V<numéro>__description.sql` (`V1` pour le schéma initial, `V2` pour la table `refresh_token`). `spring.jpa.hibernate.ddl-auto` est configuré sur `validate` : Hibernate vérifie que les entités correspondent au schéma, mais ne le modifie jamais lui-même.
+Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resources/db/migration`, nommés `V<numéro>__description.sql` (`V1` pour le schéma initial, `V2` pour la table `refresh_token`, `V3` pour l'ajout de la colonne `role` sur les utilisateurs). `spring.jpa.hibernate.ddl-auto` est configuré sur `validate` : Hibernate vérifie que les entités correspondent au schéma, mais ne le modifie jamais lui-même.
 
 ## Lancer les tests
 
@@ -248,7 +249,15 @@ L'application expose des endpoints de supervision via [Spring Boot Actuator](htt
 | `/actuator/env` | Variables d'environnement chargées par l'application |
 | `/actuator/beans` | Liste des composants (beans) Spring de l'application |
 
-> Ces endpoints sont actuellement **publics** (pas d'authentification requise), le temps que la gestion des rôles utilisateurs (admin/utilisateur) soit mise en place. `/actuator/env` et `/actuator/beans` exposent des informations internes sensibles et seront restreints aux administrateurs une fois ce mécanisme d'autorisation ajouté.
+> `/actuator/health` est public (nécessaire pour le monitoring externe, ex : Render). Tous les autres endpoints (`/actuator/info`, `/actuator/metrics`, `/actuator/env`, `/actuator/beans`) sont réservés aux utilisateurs ayant le rôle **ADMIN**, car ils exposent des informations internes sensibles (variables d'environnement, composants internes...).
+
+## Rôles et autorisations
+
+Chaque utilisateur possède un rôle : `ROLE_USER` (par défaut) ou `ROLE_ADMIN`.
+
+- Tout nouvel utilisateur créé via `/auth/register` reçoit automatiquement le rôle `ROLE_USER` — le rôle n'est jamais fourni par le client, pour éviter qu'un utilisateur puisse s'auto-promouvoir administrateur.
+- Un compte administrateur est créé automatiquement au premier démarrage de l'application (s'il n'en existe pas déjà), via un `CommandLineRunner`. Son mot de passe est fourni par la variable d'environnement `ADMIN_PASSWORD`, jamais codé en dur dans le dépôt.
+- Les endpoints Actuator sensibles (`/actuator/info`, `/actuator/metrics`, `/actuator/env`, `/actuator/beans`) sont restreints au rôle `ROLE_ADMIN` via Spring Security.
 
 ## Auteur
 
