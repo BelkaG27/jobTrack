@@ -3,6 +3,10 @@ package JobTrack;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
+import java.util.HashMap;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -20,7 +24,7 @@ import jakarta.validation.Valid;
 @RestController
 public class CandidatureController {
     
-    
+
     @Autowired
     private CandidatureRepository candidatures;
 
@@ -80,6 +84,19 @@ public class CandidatureController {
             return ResponseEntity.noContent().build();
         
 
+    }
+
+    @GetMapping("/candidatures/stats")
+    public ResponseEntity<CandidatureStatsDTOResponse> getCandidaturesStats(){
+        User user = getCurrentUser();
+        List<CandidatureStatutProjection> liste = candidatures.groupByStatut(user); 
+        HashMap<Statut,Long> hash = new HashMap<>();
+
+        liste.stream().forEach(e->hash.put(e.getStatut(),e.getNombre()));
+        Long total = liste.stream().mapToLong(CandidatureStatutProjection::getNombre).sum();
+        float taux = total==0 ? 0.f : liste.stream().filter(e->e.getStatut()==Statut.ACCEPTEE || e.getStatut()==Statut.REFUSEE).mapToLong(CandidatureStatutProjection::getNombre).sum() / (float)total;
+
+        return ResponseEntity.ok(new CandidatureStatsDTOResponse(total, hash, taux));   
     }
 
 

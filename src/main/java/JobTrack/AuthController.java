@@ -4,7 +4,6 @@ import java.security.NoSuchAlgorithmException;
 
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -12,7 +11,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import JobTrack.Exceptions.EmailAlreadyExistsException;
-import JobTrack.Exceptions.InvalidRefreshTokenException;
 import JobTrack.Exceptions.UsernameAlreadyExistsException;
 import jakarta.validation.Valid;
 
@@ -35,8 +33,6 @@ public class AuthController {
     @Autowired 
     private RefreshTokenService refreshTokenService;
 
-    @Autowired 
-    private RefreshTokenRepository refreshTokenRepository;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request)throws NoSuchAlgorithmException{
