@@ -13,6 +13,7 @@ API REST de suivi de candidatures, sécurisée par authentification JWT, dévelo
 - Isolation des données : chaque utilisateur ne voit que ses propres candidatures
 - CRUD complet des candidatures (créer, lister, modifier, supprimer)
 - Suivi du statut d'une candidature (envoyée, en attente, entretien programmé, acceptée, refusée)
+- Historique des changements de statut d'une candidature (audit trail)
 - Statistiques personnelles sur les candidatures (total, répartition par statut, taux de réponse)
 - Détection automatique des candidatures à relancer (en attente depuis plus de 3 jours), via une tâche planifiée
 - Pagination et tri de la liste des candidatures
@@ -143,14 +144,15 @@ Révoque immédiatement tous les refresh tokens actifs de l'utilisateur proprié
 
 ## Endpoints des candidatures
 
-| Méthode | URL                    | Description                                              |
-|---------|-------------------------|------------------------------------------------------------|
-| GET     | /candidatures           | Lister les candidatures de l'utilisateur connecté (paginé)  |
-| GET     | /candidatures/{id}      | Récupérer une candidature (si elle appartient à l'utilisateur) |
-| POST    | /candidatures           | Créer une nouvelle candidature                             |
-| PUT     | /candidatures/{id}      | Modifier une candidature existante                          |
-| DELETE  | /candidatures/{id}      | Supprimer une candidature                                   |
-| GET     | /candidatures/stats     | Récupérer les statistiques des candidatures de l'utilisateur connecté |
+| Méthode | URL                      | Description                                              |
+|---------|---------------------------|------------------------------------------------------------|
+| GET     | /candidatures             | Lister les candidatures de l'utilisateur connecté (paginé)  |
+| GET     | /candidatures/{id}        | Récupérer une candidature (si elle appartient à l'utilisateur) |
+| POST    | /candidatures             | Créer une nouvelle candidature                             |
+| PUT     | /candidatures/{id}        | Modifier une candidature existante                          |
+| DELETE  | /candidatures/{id}        | Supprimer une candidature                                   |
+| GET     | /candidatures/stats       | Récupérer les statistiques des candidatures de l'utilisateur connecté |
+| GET     | /candidatures/{id}/history| Récupérer l'historique des changements de statut d'une candidature |
 
 ### Pagination et tri (`GET /candidatures`)
 
@@ -201,6 +203,30 @@ Chaque candidature possède un champ `relanceRecommandee` (booléen), calculé a
 
 Ce champ est visible directement dans la réponse des endpoints `GET /candidatures` et `GET /candidatures/{id}`, sans appel supplémentaire nécessaire.
 
+### Historique des changements de statut (`GET /candidatures/{id}/history`)
+
+Chaque changement de statut d'une candidature est automatiquement enregistré dans un historique dédié, permettant de retracer son parcours dans le temps (audit trail). Un nouvel enregistrement est créé uniquement lorsque le statut change réellement lors d'un `PUT /candidatures/{id}` (une modification qui ne touche pas au statut ne génère aucune entrée).
+
+L'historique reste conservé même en cas de suppression de la candidature : il n'est pas lié au cycle de vie de celle-ci.
+
+Réponse (triée du changement le plus récent au plus ancien) :
+```json
+[
+  {
+    "id": 2,
+    "ancienStatut": "EN_ATTENTE",
+    "nouveauStatut": "ACCEPTEE",
+    "dateDeChangement": "2026-09-27T17:45:19.990594"
+  },
+  {
+    "id": 1,
+    "ancienStatut": "ENVOYE",
+    "nouveauStatut": "EN_ATTENTE",
+    "dateDeChangement": "2026-09-27T17:45:14.986554"
+  }
+]
+```
+
 ### Statuts possibles
 
 `ENVOYE`, `EN_ATTENTE`, `ENTRETIEN_PROGRAMME`, `ACCEPTEE`, `REFUSEE`
@@ -245,7 +271,7 @@ Chaque client (IP pour les routes `/auth/**`, nom d'utilisateur pour les routes 
 
 ## Migrations de base de données
 
-Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resources/db/migration`, nommés `V<numéro>__description.sql` (`V1` pour le schéma initial, `V2` pour la table `refresh_token`, `V3` pour l'ajout de la colonne `role` sur les utilisateurs, `V4` pour les colonnes `relance_recommandee` et `derniere_mis_a_jour` sur les candidatures). `spring.jpa.hibernate.ddl-auto` est configuré sur `validate` : Hibernate vérifie que les entités correspondent au schéma, mais ne le modifie jamais lui-même.
+Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resources/db/migration`, nommés `V<numéro>__description.sql` (`V1` pour le schéma initial, `V2` pour la table `refresh_token`, `V3` pour l'ajout de la colonne `role` sur les utilisateurs, `V4` pour les colonnes `relance_recommandee` et `derniere_mis_a_jour` sur les candidatures, `V5` pour le renommage de la colonne `derniere_mis_a_jour` en `derniere_misajour`, `V6` pour la table `candidature_status_history`). `spring.jpa.hibernate.ddl-auto` est configuré sur `validate` : Hibernate vérifie que les entités correspondent au schéma, mais ne le modifie jamais lui-même.
 
 ## Lancer les tests
 

@@ -23,4 +23,6 @@ public interface CandidatureRepository extends JpaRepository<Candidature, Intege
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Candidature c SET c.relanceRecommandee = true WHERE (c.statut = :statut AND c.derniereMisAJour < :date ) ")
     int relanceCandidatures(@Param("date") LocalDate date,@Param("statut") Statut statut);
+
+    
 }

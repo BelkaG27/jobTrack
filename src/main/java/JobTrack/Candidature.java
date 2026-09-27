@@ -1,16 +1,19 @@
 package JobTrack;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -20,7 +23,6 @@ public class Candidature {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
-
     
     @NotBlank(message = "Le poste ne peut pas être vide")
     private String poste;
@@ -48,6 +50,17 @@ public class Candidature {
     @NotNull 
     private LocalDate derniereMisAJour;
 
+    @OneToMany(mappedBy = "candidature")
+    private List<CandidatureStatusHistory> history;
+    
+    public List<CandidatureStatusHistory> getHistory() {
+        return history;
+    }
+
+    public void setHistory(List<CandidatureStatusHistory> history) {
+        this.history = history;
+    }
+
     public User getUser() {
         return user;
     }
@@ -57,7 +70,6 @@ public class Candidature {
     }
 
     public Candidature( String poste, String entreprise, LocalDate date, String lieu, Statut statut) {
-
         this.poste = poste;
         this.entreprise = entreprise;
         this.date = date;

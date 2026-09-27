@@ -30,6 +30,12 @@ public class CandidatureController {
     private CandidatureRepository candidatures;
 
     @Autowired 
+    private CandidatureService candidatureService;
+
+    @Autowired 
+    private CandidatureStatusHistoryRepository candidatureStatusHistoryRepository;
+
+    @Autowired 
     private UserRepository users;
 
     private User getCurrentUser(){
@@ -70,6 +76,11 @@ public class CandidatureController {
         if(existingCandidature.getStatut()==Statut.EN_ATTENTE && updatedCandidature.getStatut()!=Statut.EN_ATTENTE){
             existingCandidature.setRelanceRecommandee(false);
         }
+
+        if(existingCandidature.getStatut()!=updatedCandidature.getStatut()){
+            candidatureService.createNewStatutHistory(existingCandidature, updatedCandidature);
+        }
+
         existingCandidature.setPoste(updatedCandidature.getPoste());
         existingCandidature.setEntreprise(updatedCandidature.getEntreprise());
         existingCandidature.setDate(updatedCandidature.getDate());
@@ -103,6 +114,15 @@ public class CandidatureController {
 
         return ResponseEntity.ok(new CandidatureStatsDTOResponse(total, hash, taux));   
     }
+
+    @GetMapping("/candidatures/{id}/history")
+    public ResponseEntity<List<CandidatureStatusHistory>> getCandidatureByIdHistory(@PathVariable int id){
+        User currentUser = getCurrentUser();
+        Candidature candidature = candidatures.findById(id).filter(c->c.getUser().getId() == currentUser.getId()).orElseThrow(()-> new CandidatureNotFoundException("Candidature(s) not found"));
+        
+        List<CandidatureStatusHistory> liste = candidatureStatusHistoryRepository.findByCandidatureOrderByDateDeChangementDesc(candidature);
+        return ResponseEntity.ok(liste);
+    }   
 
     
 
