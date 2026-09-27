@@ -1,0 +1,1 @@
+ALTER TABLE Candidature RENAME COLUMN derniere_mis_a_jour TO derniere_misajour;
