@@ -4,6 +4,7 @@ package JobTrack;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 
@@ -49,6 +50,7 @@ public class CandidatureController {
         User currentUser = getCurrentUser();
 
         Candidature candidature = candidatureDTO.toCandidature();
+        candidature.setDerniereMisAJour(LocalDate.now());
         candidature.setUser(currentUser);
         candidatures.save(candidature);
         return ResponseEntity.ok(CandidatureResponseDTO.fromCandidature(candidature));
@@ -65,12 +67,15 @@ public class CandidatureController {
         User currentUser = getCurrentUser();
         Candidature existingCandidature = candidatures.findById(id).filter(c->c.getUser().getId() == currentUser.getId()).orElseThrow(()-> new CandidatureNotFoundException("Candidature(s) not found"));
         
+        if(existingCandidature.getStatut()==Statut.EN_ATTENTE && updatedCandidature.getStatut()!=Statut.EN_ATTENTE){
+            existingCandidature.setRelanceRecommandee(false);
+        }
         existingCandidature.setPoste(updatedCandidature.getPoste());
         existingCandidature.setEntreprise(updatedCandidature.getEntreprise());
         existingCandidature.setDate(updatedCandidature.getDate());
         existingCandidature.setLieu(updatedCandidature.getLieu());
         existingCandidature.setStatut(updatedCandidature.getStatut());
-        
+        existingCandidature.setDerniereMisAJour(LocalDate.now());
         candidatures.save(existingCandidature);
         return ResponseEntity.ok(CandidatureResponseDTO.fromCandidature(existingCandidature));
     }
@@ -99,5 +104,6 @@ public class CandidatureController {
         return ResponseEntity.ok(new CandidatureStatsDTOResponse(total, hash, taux));   
     }
 
+    
 
 }

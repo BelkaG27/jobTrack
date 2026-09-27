@@ -1,11 +1,13 @@
 package JobTrack;
 
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -17,4 +19,8 @@ public interface CandidatureRepository extends JpaRepository<Candidature, Intege
     
     @Query("SELECT c.statut as statut, COUNT(c) AS nombre FROM Candidature c WHERE c.user = :user GROUP BY c.statut ")
     List<CandidatureStatutProjection> groupByStatut(@Param("user") User user);
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Candidature c SET c.relanceRecommandee = true WHERE (c.statut = :statut AND c.derniereMisAJour < :date ) ")
+    int relanceCandidatures(@Param("date") LocalDate date,@Param("statut") Statut statut);
 }

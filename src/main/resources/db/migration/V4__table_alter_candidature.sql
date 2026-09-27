@@ -1,0 +1,4 @@
+ALTER TABLE Candidature ADD COLUMN relance_recommandee BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE Candidature ADD COLUMN derniere_mis_a_jour DATE NOT NULL DEFAULT CURRENT_DATE;
+
+

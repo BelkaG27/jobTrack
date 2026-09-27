@@ -43,6 +43,11 @@ public class Candidature {
     @JsonIgnore
     private User user;
 
+    private Boolean relanceRecommandee=false;
+
+    @NotNull 
+    private LocalDate derniereMisAJour;
+
     public User getUser() {
         return user;
     }
@@ -111,5 +116,20 @@ public class Candidature {
         this.statut = statut;
     }
 
+    public Boolean getRelanceRecommandee(){
+        return relanceRecommandee;
+    }
+
+    public void setRelanceRecommandee(Boolean relanceRecommandee){
+        this.relanceRecommandee=relanceRecommandee;
+    }
+
+    public LocalDate getDerniereMisAJour() {
+        return derniereMisAJour;
+    }
+
+    public void setDerniereMisAJour(LocalDate derniereMisAJour) {
+        this.derniereMisAJour = derniereMisAJour;
+    }
 
 }

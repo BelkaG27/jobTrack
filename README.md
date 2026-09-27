@@ -13,6 +13,8 @@ API REST de suivi de candidatures, sécurisée par authentification JWT, dévelo
 - Isolation des données : chaque utilisateur ne voit que ses propres candidatures
 - CRUD complet des candidatures (créer, lister, modifier, supprimer)
 - Suivi du statut d'une candidature (envoyée, en attente, entretien programmé, acceptée, refusée)
+- Statistiques personnelles sur les candidatures (total, répartition par statut, taux de réponse)
+- Détection automatique des candidatures à relancer (en attente depuis plus de 3 jours), via une tâche planifiée
 - Pagination et tri de la liste des candidatures
 - Validation des données (poste/entreprise/lieu obligatoires, date et statut requis)
 - Gestion centralisée des erreurs (404, erreurs de validation) au format JSON
@@ -148,6 +150,7 @@ Révoque immédiatement tous les refresh tokens actifs de l'utilisateur proprié
 | POST    | /candidatures           | Créer une nouvelle candidature                             |
 | PUT     | /candidatures/{id}      | Modifier une candidature existante                          |
 | DELETE  | /candidatures/{id}      | Supprimer une candidature                                   |
+| GET     | /candidatures/stats     | Récupérer les statistiques des candidatures de l'utilisateur connecté |
 
 ### Pagination et tri (`GET /candidatures`)
 
@@ -172,6 +175,31 @@ Réponse :
   "content": [ ... ]
 }
 ```
+
+### Statistiques (`GET /candidatures/stats`)
+
+Renvoie un aperçu chiffré des candidatures de l'utilisateur connecté : le nombre total de candidatures, leur répartition par statut, et un taux de réponse (proportion de candidatures ayant reçu une réponse définitive de l'entreprise, acceptée ou refusée, par rapport au total).
+
+Réponse :
+```json
+{
+  "totalCandidatures": 12,
+  "groupByStatutCount": {
+    "ENVOYE": 2,
+    "EN_ATTENTE": 5,
+    "ENTRETIEN_PROGRAMME": 1,
+    "ACCEPTEE": 2,
+    "REFUSEE": 2
+  },
+  "tauxDeReponse": 0.33
+}
+```
+
+### Relance recommandée
+
+Chaque candidature possède un champ `relanceRecommandee` (booléen), calculé automatiquement par une tâche planifiée (exécutée toutes les 72 heures). Une candidature passe à `relanceRecommandee: true` si elle est toujours au statut `EN_ATTENTE` depuis plus de 3 jours (basé sur son champ `derniereMisAJour`, mis à jour à chaque création ou modification de la candidature). Le flag est automatiquement remis à `false` dès que le statut de la candidature change.
+
+Ce champ est visible directement dans la réponse des endpoints `GET /candidatures` et `GET /candidatures/{id}`, sans appel supplémentaire nécessaire.
 
 ### Statuts possibles
 
@@ -217,7 +245,7 @@ Chaque client (IP pour les routes `/auth/**`, nom d'utilisateur pour les routes 
 
 ## Migrations de base de données
 
-Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resources/db/migration`, nommés `V<numéro>__description.sql` (`V1` pour le schéma initial, `V2` pour la table `refresh_token`, `V3` pour l'ajout de la colonne `role` sur les utilisateurs). `spring.jpa.hibernate.ddl-auto` est configuré sur `validate` : Hibernate vérifie que les entités correspondent au schéma, mais ne le modifie jamais lui-même.
+Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resources/db/migration`, nommés `V<numéro>__description.sql` (`V1` pour le schéma initial, `V2` pour la table `refresh_token`, `V3` pour l'ajout de la colonne `role` sur les utilisateurs, `V4` pour les colonnes `relance_recommandee` et `derniere_mis_a_jour` sur les candidatures). `spring.jpa.hibernate.ddl-auto` est configuré sur `validate` : Hibernate vérifie que les entités correspondent au schéma, mais ne le modifie jamais lui-même.
 
 ## Lancer les tests
 
