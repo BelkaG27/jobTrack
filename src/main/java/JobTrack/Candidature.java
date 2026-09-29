@@ -5,8 +5,6 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -49,6 +47,7 @@ public class Candidature {
 
     @NotNull 
     private LocalDate derniereMisAJour;
+
 
     @OneToMany(mappedBy = "candidature")
     private List<CandidatureStatusHistory> history;
@@ -143,5 +142,7 @@ public class Candidature {
     public void setDerniereMisAJour(LocalDate derniereMisAJour) {
         this.derniereMisAJour = derniereMisAJour;
     }
+
+    
 
 }

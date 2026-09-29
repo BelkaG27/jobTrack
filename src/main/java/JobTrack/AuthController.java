@@ -33,6 +33,9 @@ public class AuthController {
     @Autowired 
     private RefreshTokenService refreshTokenService;
 
+    @Autowired 
+    private MailTokenService mailTokenService;
+
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request)throws NoSuchAlgorithmException{
@@ -50,12 +53,13 @@ public class AuthController {
         newUser.setSpecialty(request.getSpecialty());
         newUser.setYearsOfExperience(request.getYearsOfExperience());
         newUser.setRole(Role.ROLE_USER);
+        newUser.setEnabled(false);
 
         userRepository.save(newUser);
 
-        String token = jwtService.generateToken(newUser.getUsername());
-        String refreshToken = refreshTokenService.createRefreshToken(newUser);
-        return ResponseEntity.ok(new AuthResponse(token,refreshToken));
+        mailTokenService.createMailTokenAndSendMail(newUser);
+
+        return ResponseEntity.accepted().body("verifiez votre boite mail pour un lien de verification !");
     }
 
     @PostMapping("/login")
@@ -84,4 +88,21 @@ public class AuthController {
         refreshTokenService.logout(request.getToken());
         return ResponseEntity.accepted().body("logout successful !");
     }
+
+    @PostMapping("/resend")
+    public ResponseEntity<?> resend(@Valid @RequestBody ResendRequest request)throws NoSuchAlgorithmException{
+        User user = userRepository.findByUsername(request.getUsername()).orElse(null);
+        if(user!=null && !user.isEnabled()){
+            mailTokenService.createMailTokenAndSendMail(user);
+        }
+        return ResponseEntity.accepted().body("Lien renvoyé !");
+    }
+
+    @GetMapping("/verify")
+    public ResponseEntity<?> verify(@RequestParam String token)throws NoSuchAlgorithmException{
+        mailTokenService.verifyMailToken(token);
+        return ResponseEntity.accepted().body("Lien cliqué !");
+    }
+
+    
 }

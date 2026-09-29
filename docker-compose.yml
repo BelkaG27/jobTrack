@@ -1,4 +1,9 @@
 services:
+  mailpit:
+        image: axllent/mailpit:v1.15
+        ports:
+          - 1025:1025
+          - 8025:8025
   postgres:
     image: postgres:16
     container_name: jobtrack-postgres
@@ -16,7 +21,9 @@ services:
     container_name: jobtrack-app
     depends_on:
       - postgres
+      - mailpit
     environment:
+      MAIL_HOST: mailpit
       DB_URL: jdbc:postgresql://postgres:5432/jobtrack
       DB_USERNAME: jobtrack_user
       DB_PASSWORD: jobtrack_pass

@@ -52,6 +52,12 @@ public class User implements UserDetails{
     @NotNull(message = "Le role ne peut pas etre vide")
     private Role role; 
 
+    @NotNull 
+    private Boolean enabled;
+
+    @OneToMany(mappedBy = "user",cascade = CascadeType.ALL,orphanRemoval = true)
+    private List<MailToken> mailTokens;
+
     public User() {}
 
     public User(String username, String password, String email, String specialty, int yearsOfExperience,Role role) {
@@ -152,9 +158,18 @@ public class User implements UserDetails{
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return this.enabled;
     }
 
+    public void setEnabled(Boolean enabled){
+        this.enabled=enabled;
+    }
 
-    
+    public List<MailToken> getMailTokens() {
+        return mailTokens;
+    }  
+
+    public void setMailTokens(List<MailToken> mailTokens) {
+        this.mailTokens = mailTokens;
+    }
 }

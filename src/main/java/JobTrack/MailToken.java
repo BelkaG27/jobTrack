@@ -1,41 +1,40 @@
 package JobTrack;
 
-
 import java.time.LocalDateTime;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Column;
 import jakarta.validation.constraints.NotNull;
 
-@Entity
-public class RefreshToken {
+@Entity 
+public class MailToken {
+    
     @Id 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
-
+    
     @NotNull 
     @Column(unique = true)
     private String tokenHash;
-
-    @ManyToOne
-    @JoinColumn(name="user_id")
-    private User user;
 
     @NotNull 
     private LocalDateTime expiryDate;
 
     private boolean revoked=false;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @ManyToOne
+    @JoinColumn(name="user_id")
+    private User user;
+    
 
-    public RefreshToken(){};
+    public MailToken(){};
 
-    public RefreshToken(String tokenHash,User user,LocalDateTime expiryDate){
+    public MailToken(String tokenHash,User user,LocalDateTime expiryDate){
         this.tokenHash=tokenHash;
         this.user=user;
         this.expiryDate=expiryDate;
@@ -61,13 +60,6 @@ public class RefreshToken {
         this.user = user;
     }
 
-    public LocalDateTime getExpiryDate() {
-        return expiryDate;
-    }
-
-    public void setExpiryDate(LocalDateTime expiryDate) {
-        this.expiryDate = expiryDate;
-    }
 
     public boolean isRevoked() {
         return revoked;
@@ -77,7 +69,11 @@ public class RefreshToken {
         this.revoked = revoked;
     }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
+    public LocalDateTime getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(LocalDateTime expiryDate) {
+        this.expiryDate = expiryDate;
     }
 }

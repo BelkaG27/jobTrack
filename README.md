@@ -10,6 +10,7 @@ API REST de suivi de candidatures, sécurisée par authentification JWT, dévelo
 ## Fonctionnalités
 
 - Inscription et connexion des utilisateurs (JWT)
+- Vérification de l'adresse email à l'inscription, via un lien de confirmation à durée de vie limitée
 - Isolation des données : chaque utilisateur ne voit que ses propres candidatures
 - CRUD complet des candidatures (créer, lister, modifier, supprimer)
 - Suivi du statut d'une candidature (envoyée, en attente, entretien programmé, acceptée, refusée)
@@ -22,7 +23,7 @@ API REST de suivi de candidatures, sécurisée par authentification JWT, dévelo
 - Séparation entités JPA / DTOs (requêtes et réponses dédiées, aucune entité exposée directement)
 - Documentation API interactive (Swagger/OpenAPI)
 - Migrations de base de données versionnées (Flyway)
-- Conteneurisation complète (backend + base de données)
+- Conteneurisation complète (backend + base de données + serveur mail de développement)
 - Intégration continue (GitHub Actions)
 - Déploiement conditionné à la réussite des tests (le déploiement sur Render n'est déclenché que si le pipeline CI passe)
 - Limitation du nombre de requêtes (rate limiting) par IP ou par utilisateur
@@ -33,13 +34,14 @@ API REST de suivi de candidatures, sécurisée par authentification JWT, dévelo
 ## Stack technique
 
 - **Java 21**
-- **Spring Boot** (Spring Web, Spring Data JPA, Spring Security)
+- **Spring Boot** (Spring Web, Spring Data JPA, Spring Security, Spring Mail)
 - **PostgreSQL** (base de données relationnelle)
 - **Flyway** (migrations de schéma versionnées)
 - **JWT** (io.jsonwebtoken / JJWT) pour l'authentification stateless
 - **Bucket4j** pour le rate limiting (algorithme token bucket)
 - **Swagger / OpenAPI** (springdoc-openapi) pour la documentation
-- **Docker** (conteneurisation du backend et de la base de données)
+- **Mailpit** (serveur SMTP de développement, pour intercepter les emails en local sans fournisseur réel)
+- **Docker** (conteneurisation du backend, de la base de données et du serveur mail de développement)
 - **Maven** (gestion des dépendances et du build)
 - **JUnit 5 / Mockito** (tests unitaires avec contexte de sécurité simulé)
 - **GitHub Actions** (intégration continue)
@@ -60,7 +62,7 @@ git clone https://github.com/BelkaG27/jobTrack.git
 cd jobtrack
 ```
 
-### 2. Lancer l'application complète (backend + base de données)
+### 2. Lancer l'application complète (backend + base de données + serveur mail)
 
 ```bash
 docker compose up -d --build
@@ -69,6 +71,8 @@ docker compose up -d --build
 L'API est accessible sur `http://localhost:8080`.
 
 > Le projet est configuré pour fonctionner via Docker : les identifiants de base de données, le secret JWT et le mot de passe de l'administrateur (`ADMIN_PASSWORD`) sont fournis comme variables d'environnement dans `docker-compose.yml`, aucune valeur sensible n'est codée en dur dans `application.properties`.
+
+En local, les emails envoyés par l'application (lien de vérification) ne sont pas remis à un vrai fournisseur de messagerie : ils sont interceptés par **Mailpit**, consultable sur `http://localhost:8025`.
 
 ### 3. Documentation interactive (Swagger UI)
 
@@ -92,12 +96,36 @@ L'API utilise un système à **deux tokens** :
 
 | Méthode | URL             | Description                                        |
 |---------|------------------|------------------------------------------------------|
-| POST    | /auth/register   | Créer un compte, retourne un access token + un refresh token |
-| POST    | /auth/login      | Se connecter, retourne un access token + un refresh token    |
+| POST    | /auth/register   | Créer un compte (non activé), envoie un lien de vérification par email |
+| GET     | /auth/verify     | Activer le compte à partir du lien reçu par email |
+| POST    | /auth/resend     | Renvoyer un lien de vérification à un compte non activé |
+| POST    | /auth/login      | Se connecter (compte activé requis), retourne un access token + un refresh token |
 | POST    | /auth/refresh    | Échanger un refresh token valide contre une nouvelle paire de tokens |
 | POST    | /auth/logout     | Révoquer tous les refresh tokens actifs de l'utilisateur (déconnexion) |
 
-Réponse type de `/auth/register`, `/auth/login` et `/auth/refresh` :
+### Inscription et vérification d'email
+
+`POST /auth/register` crée le compte avec le statut **non activé** (`enabled: false`) et envoie automatiquement un email contenant un lien de vérification, valable **10 minutes**. Aucun token d'authentification n'est renvoyé à ce stade : le compte n'est pas encore utilisable.
+
+Réponse :
+```
+202 Accepted
+"verifiez votre boite mail pour un lien de verification !"
+```
+
+Le lien reçu par email pointe vers `GET /auth/verify?token=<token>`. Cliquer dessus (ou appeler l'URL) active le compte. Un lien déjà utilisé ou expiré renvoie une erreur explicite (401).
+
+Si le lien a expiré ou n'a jamais été reçu, `POST /auth/resend` permet d'en générer un nouveau (l'ancien est automatiquement invalidé) :
+```json
+{
+  "username": "monUsername"
+}
+```
+Pour éviter de révéler si un compte existe ou est déjà activé, cet endpoint renvoie systématiquement la même réponse `202`, quel que soit le cas réel (compte inexistant, déjà activé, ou en attente de vérification).
+
+Une fois le compte activé, `POST /auth/login` fonctionne normalement et retourne les tokens d'authentification. Tant que le compte n'est pas activé, une tentative de connexion est refusée.
+
+Réponse type de `/auth/login` et `/auth/refresh` :
 ```json
 {
   "accessToken": "eyJhbGciOi...",
@@ -141,6 +169,15 @@ Révoque immédiatement tous les refresh tokens actifs de l'utilisateur proprié
 - **Détection de vol et révocation en cascade** : si un refresh token déjà utilisé (donc déjà révoqué) est présenté à nouveau, l'API considère qu'il a été volé/intercepté et révoque **immédiatement tous les refresh tokens actifs de l'utilisateur concerné**, le forçant à se reconnecter avec son mot de passe.
 - Un refresh token invalide, expiré ou déjà utilisé renvoie une erreur **401 (Unauthorized)**.
 - Les refresh tokens révoqués ou expirés sont automatiquement purgés de la base de données par une tâche planifiée (`@Scheduled`), exécutée toutes les 15 minutes.
+
+### Sécurité du lien de vérification d'email
+
+- Le token de vérification n'est jamais stocké en clair : seul son hash SHA-256 est conservé, comme pour le refresh token.
+- Il est encodé en **Base64 URL-safe** (sans padding), afin de rester valide une fois inséré dans un lien cliquable.
+- Il expire après **10 minutes**.
+- Générer un nouveau lien (via `/auth/resend`) invalide automatiquement les précédents : un seul lien est valide à la fois.
+- Un lien invalide, expiré ou déjà utilisé renvoie une erreur **401 (Unauthorized)**.
+- Les liens révoqués ou expirés sont automatiquement purgés de la base de données par une tâche planifiée (`@Scheduled`), comme pour les refresh tokens.
 
 ## Endpoints des candidatures
 
@@ -252,10 +289,12 @@ Les erreurs sont centralisées et renvoyées au format JSON.
 "Candidature(s) not found"
 ```
 
-**Refresh token invalide, expiré ou déjà utilisé (401)**
+**Refresh token ou lien de vérification invalide, expiré ou déjà utilisé (401)**
 ```json
 "ce token a expiré !"
 ```
+
+**Compte non activé lors d'une tentative de connexion (401/403, selon le comportement par défaut de Spring Security)**
 
 **Erreur de validation (400)**
 ```json
@@ -271,7 +310,16 @@ Chaque client (IP pour les routes `/auth/**`, nom d'utilisateur pour les routes 
 
 ## Migrations de base de données
 
-Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resources/db/migration`, nommés `V<numéro>__description.sql` (`V1` pour le schéma initial, `V2` pour la table `refresh_token`, `V3` pour l'ajout de la colonne `role` sur les utilisateurs, `V4` pour les colonnes `relance_recommandee` et `derniere_mis_a_jour` sur les candidatures, `V5` pour le renommage de la colonne `derniere_mis_a_jour` en `derniere_misajour`, `V6` pour la table `candidature_status_history`). `spring.jpa.hibernate.ddl-auto` est configuré sur `validate` : Hibernate vérifie que les entités correspondent au schéma, mais ne le modifie jamais lui-même.
+Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resources/db/migration`, nommés `V<numéro>__description.sql` :
+- `V1` : schéma initial
+- `V2` : table `refresh_token`
+- `V3` : ajout de la colonne `role` sur les utilisateurs
+- `V4` : colonnes `relance_recommandee` et `derniere_mis_a_jour` sur les candidatures
+- `V5` : renommage de la colonne `derniere_mis_a_jour` en `derniere_misajour`
+- `V6` : table `candidature_status_history`
+- `V7` : colonne `enabled` sur les utilisateurs et table `mail_token`
+
+`spring.jpa.hibernate.ddl-auto` est configuré sur `validate` : Hibernate vérifie que les entités correspondent au schéma, mais ne le modifie jamais lui-même.
 
 ## Lancer les tests
 
@@ -287,7 +335,7 @@ Un pipeline GitHub Actions (`.github/workflows/ci.yml`) exécute automatiquement
 
 ## Déploiement
 
-Le backend est conteneurisé via `Dockerfile` (build multi-stage) et déployé sur Render, avec une base PostgreSQL managée. Les valeurs sensibles (identifiants de base de données, secret JWT) sont injectées via des variables d'environnement, jamais commitées dans le dépôt.
+Le backend est conteneurisé via `Dockerfile` (build multi-stage) et déployé sur Render, avec une base PostgreSQL managée. Les valeurs sensibles (identifiants de base de données, secret JWT, configuration du serveur mail) sont injectées via des variables d'environnement, jamais commitées dans le dépôt.
 
 Le déploiement est **conditionné à la réussite des tests** : si le pipeline CI échoue (ex : un test casse), le déploiement sur Render n'est pas déclenché, ce qui évite de mettre en production une version défectueuse.
 
@@ -310,7 +358,7 @@ L'application expose des endpoints de supervision via [Spring Boot Actuator](htt
 Chaque utilisateur possède un rôle : `ROLE_USER` (par défaut) ou `ROLE_ADMIN`.
 
 - Tout nouvel utilisateur créé via `/auth/register` reçoit automatiquement le rôle `ROLE_USER` — le rôle n'est jamais fourni par le client, pour éviter qu'un utilisateur puisse s'auto-promouvoir administrateur.
-- Un compte administrateur est créé automatiquement au premier démarrage de l'application (s'il n'en existe pas déjà), via un `CommandLineRunner`. Son mot de passe est fourni par la variable d'environnement `ADMIN_PASSWORD`, jamais codé en dur dans le dépôt.
+- Un compte administrateur est créé automatiquement au premier démarrage de l'application (s'il n'en existe pas déjà), via un `CommandLineRunner`. Son mot de passe est fourni par la variable d'environnement `ADMIN_PASSWORD`, jamais codé en dur dans le dépôt. Ce compte est activé (`enabled: true`) dès sa création, sans passer par la vérification d'email.
 - Les endpoints Actuator sensibles (`/actuator/info`, `/actuator/metrics`, `/actuator/env`, `/actuator/beans`) sont restreints au rôle `ROLE_ADMIN` via Spring Security.
 
 ## Auteur
