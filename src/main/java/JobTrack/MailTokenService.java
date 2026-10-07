@@ -23,9 +23,6 @@ public class MailTokenService {
     private MailService mailService;
 
     @Autowired 
-    private UserRepository userRepository;
-
-    @Autowired 
     private MailTokenRepository mailTokenRepository;
 
     public String hashToken(String token)throws NoSuchAlgorithmException{
@@ -60,6 +57,9 @@ public class MailTokenService {
     @Transactional 
     public void verifyMailToken(String token)throws NoSuchAlgorithmException{
        MailToken mt =  mailTokenRepository.findByTokenHash(hashToken(token)).orElseThrow(()-> new InvalidRefreshTokenException("Lien non valide !"));
+       if(mt.getUser().getSuspended()){
+        throw new InvalidRefreshTokenException("User suspended ! contact admin ");
+       }
        if(mt.isRevoked()){
         throw new InvalidRefreshTokenException("ce lien a déja été utilisé !");
        }

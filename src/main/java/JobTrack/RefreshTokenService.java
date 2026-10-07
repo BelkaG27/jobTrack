@@ -48,6 +48,9 @@ public class RefreshTokenService {
     @Transactional
     public VerifyRefreshResponse verifyRefreshToken(String token)throws NoSuchAlgorithmException,InvalidRefreshTokenException{
         RefreshToken rt = refreshTokenRepo.findByTokenHash(hashToken(token)).orElseThrow(()->new InvalidRefreshTokenException("le token saisie n'existe pas !"));
+        if(rt.getUser().isEnabled() == false){
+            throw new InvalidRefreshTokenException("le compte de l'utilisateur est désactivé !");
+        }
         if(rt.isRevoked()){
             refreshTokenRepo.revokeAllByUser(rt.getUser());
             throw new InvalidRefreshTokenException("ce token a déja été utilisé !");

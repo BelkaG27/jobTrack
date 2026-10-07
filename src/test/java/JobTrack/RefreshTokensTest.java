@@ -45,7 +45,6 @@ public class RefreshTokensTest {
         assertEquals(rt.getTokenHash(),refreshTokenService.hashToken(response));
         assertFalse(rt.isRevoked());
         assertTrue(rt.getExpiryDate().isAfter(LocalDateTime.now()));
-
     } 
 
     @Test 
@@ -59,7 +58,9 @@ public class RefreshTokensTest {
     @Test
     public void testTokenRevoked()throws NoSuchAlgorithmException{
         String token = "blabla";
-        RefreshToken rt = new RefreshToken(refreshTokenService.hashToken(token), new User(), LocalDateTime.now().plusMinutes(15));
+        User user = new User("bbk", "bbk", "smaili@gmail.com", "bbk", 1,Role.ROLE_ADMIN);
+        user.setEnabled(true);
+        RefreshToken rt = new RefreshToken(refreshTokenService.hashToken(token), user, LocalDateTime.now().plusMinutes(15));
         rt.setRevoked(true);
         when(refreshTokenRepository.findByTokenHash(refreshTokenService.hashToken(token))).thenReturn(Optional.of(rt));
 
@@ -70,7 +71,9 @@ public class RefreshTokensTest {
     @Test
     public void testTokenExpired()throws NoSuchAlgorithmException{
         String token = "blabla";
-        RefreshToken rt = new RefreshToken(refreshTokenService.hashToken(token), new User(), LocalDateTime.now().minusMinutes(15));
+        User user = new User("bbk", "bbk", "smaili@gmail.com", "bbk", 1,Role.ROLE_ADMIN);
+        user.setEnabled(true);
+        RefreshToken rt = new RefreshToken(refreshTokenService.hashToken(token), user, LocalDateTime.now().minusMinutes(15));
         rt.setRevoked(false);
         when(refreshTokenRepository.findByTokenHash(refreshTokenService.hashToken(token))).thenReturn(Optional.of(rt));
 
@@ -80,6 +83,7 @@ public class RefreshTokensTest {
     @Test 
     public void testTokenSuccess()throws NoSuchAlgorithmException{
         User user =  new User("bbk", "bbk", "smaili@gmail.com", "bbk", 1,Role.ROLE_ADMIN);
+        user.setEnabled(true);
         ArgumentCaptor<RefreshToken> captor = ArgumentCaptor.forClass(RefreshToken.class);
         String token = "blabla";
         RefreshToken rt = new RefreshToken(refreshTokenService.hashToken(token), user, LocalDateTime.now().plusMinutes(15));

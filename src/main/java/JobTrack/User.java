@@ -53,7 +53,10 @@ public class User implements UserDetails{
     private Role role; 
 
     @NotNull 
-    private Boolean enabled;
+    private Boolean enabled = false ; // concerne l'activation par mail
+
+    @NotNull 
+    private Boolean suspended = false; // concerne la suspension par l'admin
 
     @OneToMany(mappedBy = "user",cascade = CascadeType.ALL,orphanRemoval = true)
     private List<MailToken> mailTokens;
@@ -136,6 +139,19 @@ public class User implements UserDetails{
         this.role=role;
     }
 
+
+    public Boolean getSuspended() {
+        return suspended;
+    }
+
+    public void setSuspended(Boolean suspended) {
+        this.suspended = suspended;
+    }
+
+    public Boolean isEmailVerified(){
+        return this.enabled;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(getRole().name()));
@@ -158,6 +174,9 @@ public class User implements UserDetails{
 
     @Override
     public boolean isEnabled() {
+        if(this.suspended){
+            return false;
+        }
         return this.enabled;
     }
 

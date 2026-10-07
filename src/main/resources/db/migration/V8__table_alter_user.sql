@@ -1,0 +1,1 @@
+ALTER TABLE app_user ADD COLUMN suspended BOOLEAN NOT NULL DEFAULT false;

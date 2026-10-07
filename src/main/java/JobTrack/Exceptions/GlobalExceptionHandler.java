@@ -83,4 +83,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(exception.getMessage());
     } 
 
+    @ExceptionHandler(ChangeRoleException.class)
+    public ResponseEntity<String> handleChangeRole(ChangeRoleException exception){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(exception.getMessage());
+    } 
+
+    @ExceptionHandler(ChangeSuspendedException.class)
+    public ResponseEntity<String> handleChangeSuspended(ChangeSuspendedException exception){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(exception.getMessage());
+    }
+
+    @ExceptionHandler (UserNotFoundException.class)
+    public ResponseEntity<String> handleUserNotFound(UserNotFoundException exception){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+    }
+
 }

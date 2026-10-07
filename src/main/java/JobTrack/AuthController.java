@@ -54,6 +54,7 @@ public class AuthController {
         newUser.setYearsOfExperience(request.getYearsOfExperience());
         newUser.setRole(Role.ROLE_USER);
         newUser.setEnabled(false);
+        newUser.setSuspended(false);
 
         userRepository.save(newUser);
 
@@ -92,9 +93,12 @@ public class AuthController {
     @PostMapping("/resend")
     public ResponseEntity<?> resend(@Valid @RequestBody ResendRequest request)throws NoSuchAlgorithmException{
         User user = userRepository.findByUsername(request.getUsername()).orElse(null);
-        if(user!=null && !user.isEnabled()){
-            mailTokenService.createMailTokenAndSendMail(user);
+        if(user!=null){
+            if(!user.isEmailVerified() && !user.getSuspended()){
+                mailTokenService.createMailTokenAndSendMail(user);
+            }
         }
+        
         return ResponseEntity.accepted().body("Lien renvoyé !");
     }
 
