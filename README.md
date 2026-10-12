@@ -18,6 +18,9 @@ API REST de suivi de candidatures, sécurisée par authentification JWT, dévelo
 - Statistiques personnelles sur les candidatures (total, répartition par statut, taux de réponse)
 - Détection automatique des candidatures à relancer (en attente depuis plus de 3 jours), via une tâche planifiée
 - Pagination et tri de la liste des candidatures
+- Upload de documents PDF (CV, lettre de motivation, autre) rattachés à une candidature
+- Téléchargement et suppression des documents d'une candidature
+- Suppression automatique des fichiers physiques lorsqu'une candidature est supprimée
 - Validation des données (poste/entreprise/lieu obligatoires, date et statut requis)
 - Gestion centralisée des erreurs (404, erreurs de validation) au format JSON
 - Séparation entités JPA / DTOs (requêtes et réponses dédiées, aucune entité exposée directement)
@@ -40,6 +43,7 @@ API REST de suivi de candidatures, sécurisée par authentification JWT, dévelo
 - **JWT** (io.jsonwebtoken / JJWT) pour l'authentification stateless
 - **Bucket4j** pour le rate limiting (algorithme token bucket)
 - **Swagger / OpenAPI** (springdoc-openapi) pour la documentation
+- **Stockage de fichiers local** derrière un service dédié (`FileStorageService`), remplaçable par un stockage objet (S3) sans toucher au reste du code
 - **Mailpit** (serveur SMTP de développement, pour intercepter les emails en local sans fournisseur réel)
 - **Docker** (conteneurisation du backend, de la base de données et du serveur mail de développement)
 - **Maven** (gestion des dépendances et du build)
@@ -187,7 +191,7 @@ Révoque immédiatement tous les refresh tokens actifs de l'utilisateur proprié
 | GET     | /candidatures/{id}        | Récupérer une candidature (si elle appartient à l'utilisateur) |
 | POST    | /candidatures             | Créer une nouvelle candidature                             |
 | PUT     | /candidatures/{id}        | Modifier une candidature existante                          |
-| DELETE  | /candidatures/{id}        | Supprimer une candidature                                   |
+| DELETE  | /candidatures/{id}        | Supprimer une candidature (et ses documents)                |
 | GET     | /candidatures/stats       | Récupérer les statistiques des candidatures de l'utilisateur connecté |
 | GET     | /candidatures/{id}/history| Récupérer l'historique des changements de statut d'une candidature |
 
@@ -280,6 +284,74 @@ Réponse (triée du changement le plus récent au plus ancien) :
 }
 ```
 
+## Documents d'une candidature
+
+Chaque candidature peut avoir des documents PDF, **au maximum un par type** : `CV`, `LETTRE_DE_MOTIVATION`, `AUTRE`. Un second envoi du même type est refusé (409) : il faut d'abord supprimer l'ancien.
+
+| Méthode | URL | Description |
+|---------|-----|-------------|
+| POST    | /candidatures/{id}/files          | Envoyer un document (`multipart/form-data`) |
+| GET     | /candidatures/{id}/files          | Lister les métadonnées des documents (du plus récent au plus ancien) |
+| GET     | /candidatures/{id}/files/{fileId} | Télécharger un document |
+| DELETE  | /candidatures/{id}/files/{fileId} | Supprimer un document (204) |
+
+### Envoi (`POST /candidatures/{id}/files`)
+
+Corps `multipart/form-data` avec deux champs :
+
+| Champ | Description |
+|---|---|
+| `file` | Le fichier PDF |
+| `typeDocument` | `CV`, `LETTRE_DE_MOTIVATION` ou `AUTRE` |
+
+Réponse `201 Created` :
+```json
+{
+  "id": 1,
+  "nomOrigine": "cv-2026.pdf",
+  "typeMime": "application/pdf",
+  "taille": 48213,
+  "typeDocument": "CV",
+  "dateUpload": "2026-10-12T18:30:12.123456",
+  "candidature": 4
+}
+```
+
+Le nom de stockage interne n'est jamais exposé.
+
+### Règles de validation
+
+- Taille maximale : **5 Mo** par fichier (10 Mo par requête), au-delà : **413**
+- Fichier non vide, extension `.pdf`, et contenu réellement PDF : les premiers octets (`%PDF-`) sont vérifiés, le `Content-Type` envoyé par le client n'est pas utilisé
+- Un seul document par type et par candidature (**409** sinon), garanti à la fois par un contrôle applicatif et par une contrainte `UNIQUE` en base (protection contre les requêtes simultanées)
+
+### Sécurité des fichiers
+
+- **Aucun nom fourni par le client n'est utilisé sur le disque** : le fichier est stocké sous un nom `UUID` + `.pdf`. Le nom d'origine n'est conservé qu'en base, pour l'affichage et le téléchargement.
+- **Protection contre le path traversal** : tout chemin est normalisé puis vérifié (`startsWith`) pour rester dans le dossier de stockage, à l'écriture comme à la lecture et à la suppression.
+- **Isolation des données** : l'accès à un fichier exige que la candidature appartienne à l'utilisateur connecté **et** que le fichier appartienne à cette candidature (protection contre l'IDOR). Dans les deux cas d'échec, la réponse est un 404, qui ne révèle pas l'existence de la ressource.
+- **Téléchargement** : `Content-Disposition: attachment` généré via l'API Spring (encodage et échappement du nom), et `Content-Type` issu de la base, pas du client.
+
+### Cohérence entre la base et le disque
+
+Le disque n'est pas transactionnel : l'ordre des opérations est choisi pour que l'échec le moins grave soit le plus tolérable.
+
+- **Envoi** : fichier écrit d'abord, puis ligne en base. Si la base échoue, le fichier est supprimé immédiatement (compensation).
+- **Suppression** (d'un fichier ou d'une candidature entière) : ligne supprimée d'abord, fichier supprimé **après le commit** (`afterCommit`). Si la suppression disque échoue, l'erreur est loggée sans être renvoyée au client : le fichier devient un orphelin invisible, jamais une ligne pointant vers un fichier absent.
+- Une écriture interrompue (disque plein...) supprime le fichier partiel.
+
+### Configuration
+
+| Propriété | Variable d'environnement | Défaut |
+|---|---|---|
+| `file.storage.dir` | `FILE_STORAGE_DIR` | `uploads` |
+| `spring.servlet.multipart.max-file-size` | | `5MB` |
+| `spring.servlet.multipart.max-request-size` | | `10MB` |
+
+Dans `docker-compose.yml`, le dossier `/app/uploads` est monté sur le volume nommé `uploads_data` : les fichiers survivent à un `docker compose up --build`.
+
+> **Limite sur Render (offre gratuite)** : le système de fichiers est éphémère. Les documents envoyés sont perdus à chaque redémarrage ou redéploiement, alors que leurs lignes restent en base (le téléchargement répond alors 404). Une solution durable demanderait un stockage objet de type S3 : seul `FileStorageService` aurait à changer.
+
 ## Gestion des erreurs
 
 Les erreurs sont centralisées et renvoyées au format JSON.
@@ -304,9 +376,21 @@ Les erreurs sont centralisées et renvoyées au format JSON.
 }
 ```
 
+**Documents**
+
+| Cas | Code |
+|---|---|
+| Fichier trop volumineux | 413 |
+| Fichier vide, extension non autorisée, contenu non PDF | 400 |
+| Type de document déjà présent pour cette candidature | 409 |
+| Candidature ou fichier introuvable (ou appartenant à un autre utilisateur) | 404 |
+| Fichier présent en base mais absent du disque | 404 (incident loggé côté serveur) |
+
 ## Rate limiting
 
 Chaque client (IP pour les routes `/auth/**`, nom d'utilisateur pour les routes authentifiées) dispose d'un quota de **20 requêtes**, réalimenté à raison de **10 requêtes par minute**. Au-delà, l'API répond avec le code **429 (Too Many Requests)**.
+
+Les envois de fichiers partagent le même quota que les autres routes alors qu'ils coûtent plus cher : un quota dédié aux uploads serait une amélioration possible.
 
 ## Migrations de base de données
 
@@ -318,6 +402,9 @@ Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resourc
 - `V5` : renommage de la colonne `derniere_mis_a_jour` en `derniere_misajour`
 - `V6` : table `candidature_status_history`
 - `V7` : colonne `enabled` sur les utilisateurs et table `mail_token`
+- `V8` : colonne `suspended` sur les utilisateurs
+- `V9` : table `fichier` (métadonnées des documents)
+- `V10` : contrainte `UNIQUE (candidature_id, type_document)` sur `fichier`
 
 `spring.jpa.hibernate.ddl-auto` est configuré sur `validate` : Hibernate vérifie que les entités correspondent au schéma, mais ne le modifie jamais lui-même.
 
@@ -328,6 +415,8 @@ Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resourc
 ```
 
 Inclut des tests unitaires sur le contrôleur des candidatures (repositories mockés, contexte de sécurité simulé), sur le gestionnaire d'erreurs centralisé, ainsi que sur le service de refresh tokens (création, rotation, détection de réutilisation avec révocation en cascade, expiration, logout).
+
+Les documents sont aussi couverts : validation des PDF, service de stockage (répertoire temporaire : écriture, lecture, suppression, path traversal, nettoyage après écriture interrompue) et service de fichiers (compensation après échec en base, suppression différée après commit).
 
 ## Intégration continue
 

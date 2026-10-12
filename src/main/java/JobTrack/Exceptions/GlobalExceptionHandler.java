@@ -1,10 +1,13 @@
 package JobTrack.Exceptions;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import tools.jackson.databind.exc.InvalidFormatException;
 import tools.jackson.databind.exc.MismatchedInputException;
@@ -14,6 +17,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 
 
 
@@ -96,6 +100,61 @@ public class GlobalExceptionHandler {
     @ExceptionHandler (UserNotFoundException.class)
     public ResponseEntity<String> handleUserNotFound(UserNotFoundException exception){
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+    }
+
+    @ExceptionHandler (InvalidFileFormatException.class)
+    public ResponseEntity<String> handleInvalidFileFormat(InvalidFileFormatException exception){
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exception.getMessage());
+    }
+
+    @ExceptionHandler (FileEmptyException.class)
+    public ResponseEntity<String> handleFileEmpty(FileEmptyException exception){
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exception.getMessage());
+    }
+
+    @ExceptionHandler (InvalidPdfException.class)
+    public ResponseEntity<String> handleInvalidPdf(InvalidPdfException exception){
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exception.getMessage());
+    }
+
+    @ExceptionHandler (StoredFileNotFoundException.class)
+    public ResponseEntity<String> handleStoredFileNotFound(StoredFileNotFoundException exception){
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
+    }
+
+    @ExceptionHandler (FileStorageException.class)
+    public ResponseEntity<String> handleFileStorageException(FileStorageException exception){   
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(exception.getMessage());
+    }
+
+    @ExceptionHandler (FileTypeAlreadyExistsException.class)
+    public ResponseEntity<String> handleFileTypeAlreadyExists(FileTypeAlreadyExistsException exception){   
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
+    }
+
+    @ExceptionHandler (FileNotFoundException.class)
+    public ResponseEntity<String> handleFileNotFound(FileNotFoundException exception){   
+        return ResponseEntity.status(HttpStatusCode.valueOf(404)).body(exception.getMessage());
+    }
+
+    @ExceptionHandler (MissingServletRequestParameterException.class)
+    public ResponseEntity<String> handleMissingRequestParam(MissingServletRequestParameterException exception){
+        return ResponseEntity.status(HttpStatusCode.valueOf(400)).body(exception.getMessage());
+    }
+
+    @ExceptionHandler (MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<String> handleargumentTypeMismatch(MethodArgumentTypeMismatchException exception){
+        return ResponseEntity.status(HttpStatusCode.valueOf(400)).body(exception.getMessage());
+    }
+
+    @ExceptionHandler (MaxUploadSizeExceededException.class)
+    public ResponseEntity<String> handleargumentTypeMismatch(MaxUploadSizeExceededException exception){
+        return ResponseEntity.status(HttpStatusCode.valueOf(413)).body(exception.getMessage());
+    }
+
+    @ExceptionHandler (IllegalArgumentException.class)
+    public ResponseEntity<String> handleargumentTypeMismatch(IllegalArgumentException exception){
+        return ResponseEntity.status(HttpStatusCode.valueOf(400)).body(exception.getMessage());
     }
 
 }

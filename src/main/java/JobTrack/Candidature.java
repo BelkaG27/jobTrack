@@ -48,9 +48,19 @@ public class Candidature {
     @NotNull 
     private LocalDate derniereMisAJour;
 
-
     @OneToMany(mappedBy = "candidature")
     private List<CandidatureStatusHistory> history;
+
+    @OneToMany(mappedBy = "candidature", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    private List<Fichier> fichiers;
+
+    public List<Fichier> getFichiers() {
+        return fichiers;
+    }
+
+    public void setFichiers(List<Fichier> fichiers) {
+        this.fichiers = fichiers;
+    }
     
     public List<CandidatureStatusHistory> getHistory() {
         return history;

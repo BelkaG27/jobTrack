@@ -2,6 +2,7 @@ package JobTrack;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,6 +18,12 @@ public class CandidatureService {
     @Autowired 
     private CandidatureStatusHistoryRepository candidatureStatusHistoryRepository;
 
+    @Autowired 
+    private FileService fileService;
+
+    @Autowired 
+    private FileRepository fileRepository;
+
     @Scheduled(fixedRate = 259200000)
     @Transactional
     public void relanceCandidatures(){
@@ -30,6 +37,13 @@ public class CandidatureService {
         history.setCandidature(existing);
         history.setDateDeChangement(LocalDateTime.now());
         candidatureStatusHistoryRepository.save(history);
+    }
+
+    @Transactional 
+    public void deleteCandidature(Candidature candidature){
+        List<String> liste = fileRepository.findByCandidature(candidature).stream().map(Fichier::getNomStockage).toList();
+        candidatureRepository.delete(candidature);
+        fileService.supprimerAfterCommit(liste);
     }
 
 

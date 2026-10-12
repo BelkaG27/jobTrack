@@ -3,11 +3,9 @@ package JobTrack;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -96,10 +94,8 @@ public class CandidatureController {
         User currentUser = getCurrentUser();
         Candidature candidatureToDelete = candidatures.findById(id).filter(c->c.getUser().getId() == currentUser.getId()).orElseThrow(()-> new CandidatureNotFoundException("Candidature(s) not found"));
 
-            candidatures.delete(candidatureToDelete);
-            return ResponseEntity.noContent().build();
-        
-
+        candidatureService.deleteCandidature(candidatureToDelete);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/candidatures/stats")
@@ -123,7 +119,4 @@ public class CandidatureController {
         List<CandidatureStatusHistory> liste = candidatureStatusHistoryRepository.findByCandidatureOrderByDateDeChangementDesc(candidature);
         return ResponseEntity.ok(liste);
     }   
-
-    
-
 }
