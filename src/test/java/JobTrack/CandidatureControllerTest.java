@@ -35,6 +35,9 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -50,6 +53,9 @@ public class CandidatureControllerTest {
 
     @Mock
     UserRepository userRepository;
+
+    @Mock
+    CandidatureService candidatureService;
 
     private User currentUser;
 
@@ -136,11 +142,31 @@ public class CandidatureControllerTest {
     public void testGetCandidatures(){
         Candidature candidatureTest1 = new Candidature("Poste Test", "Entreprise Test", LocalDate.of(2026, 1, 1), "Lieu Test", Statut.EN_ATTENTE);        
         Candidature candidatureTest2 = new Candidature("Poste Test", "Entreprise Test", LocalDate.of(2026, 1, 1), "Lieu Test", Statut.EN_ATTENTE);
-        when(candidatureRepository.findByUser(any(User.class), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(candidatureTest1,candidatureTest2)));
+        when(candidatureService.searchCandidatureBy(any(User.class), any(Statut.class),anyString(),any(LocalDate.class),any(LocalDate.class),any(Pageable.class))).thenReturn(new PageImpl<>(List.of(candidatureTest1,candidatureTest2)));
         when(userRepository.findByUsername(currentUser.getUsername())).thenReturn(Optional.of(currentUser));
 
-        PageResponseDTO<CandidatureResponseDTO> response = candidatureController.getCandidatures(PageRequest.of(0,10));
+        PageResponseDTO<CandidatureResponseDTO> response = candidatureController.getCandidatures( Statut.EN_ATTENTE,"Entreprise Test",LocalDate.of(2025, 2, 1),LocalDate.of(2026, 2, 1),PageRequest.of(0,10));
         assertEquals(2, response.getContent().size());
+        verify(candidatureService).searchCandidatureBy(eq(currentUser),eq(Statut.EN_ATTENTE), eq("Entreprise Test"), eq(LocalDate.of(2025, 2, 1)), eq(LocalDate.of(2026, 2, 1)), eq(PageRequest.of(0,10)));
+    }
+
+    @Test
+    public void testGetCandidaturesSansFiltre(){
+        Candidature candidatureTest1 = new Candidature("Poste Test", "Entreprise Test", LocalDate.of(2026, 1, 1), "Lieu Test", Statut.EN_ATTENTE);        
+        Candidature candidatureTest2 = new Candidature("Poste Test", "Entreprise Test", LocalDate.of(2026, 1, 1), "Lieu Test", Statut.EN_ATTENTE);
+        Pageable pageable = PageRequest.of(0, 10);
+        when(candidatureService.searchCandidatureBy(eq(currentUser),isNull(),isNull(),isNull(),isNull(),eq(pageable))).thenReturn(new PageImpl<>(List.of(candidatureTest1,candidatureTest2)));
+        when(userRepository.findByUsername(currentUser.getUsername())).thenReturn(Optional.of(currentUser));
+
+        PageResponseDTO<CandidatureResponseDTO> response = candidatureController.getCandidatures(null,null,null,null,pageable);
+        assertEquals(2, response.getContent().size());
+        verify(candidatureService).searchCandidatureBy(eq(currentUser),isNull(),isNull(),isNull(),isNull(),eq(pageable));
+    }
+
+    @Test
+    public void testGetCandidaturesException(){
+        assertThrows(IllegalArgumentException.class, ()->candidatureController.getCandidatures(Statut.EN_ATTENTE,"Entreprise Test",LocalDate.of(2026, 2, 1),LocalDate.of(2025, 2, 1),PageRequest.of(0,10)));
+        verifyNoInteractions(candidatureService);
     }
 
     @Test 

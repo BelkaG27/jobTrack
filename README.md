@@ -18,6 +18,7 @@ API REST de suivi de candidatures, sécurisée par authentification JWT, dévelo
 - Statistiques personnelles sur les candidatures (total, répartition par statut, taux de réponse)
 - Détection automatique des candidatures à relancer (en attente depuis plus de 3 jours), via une tâche planifiée
 - Pagination et tri de la liste des candidatures
+- Recherche et filtrage avancés des candidatures (statut, entreprise, plage de dates), combinables entre eux et avec la pagination et le tri
 - Upload de documents PDF (CV, lettre de motivation, autre) rattachés à une candidature
 - Téléchargement et suppression des documents d'une candidature
 - Suppression automatique des fichiers physiques lorsqu'une candidature est supprimée
@@ -38,6 +39,7 @@ API REST de suivi de candidatures, sécurisée par authentification JWT, dévelo
 
 - **Java 21**
 - **Spring Boot** (Spring Web, Spring Data JPA, Spring Security, Spring Mail)
+- **Spring Data JPA Specifications** (`JpaSpecificationExecutor`) pour construire dynamiquement les requêtes de filtrage
 - **PostgreSQL** (base de données relationnelle)
 - **Flyway** (migrations de schéma versionnées)
 - **JWT** (io.jsonwebtoken / JJWT) pour l'authentification stateless
@@ -187,7 +189,7 @@ Révoque immédiatement tous les refresh tokens actifs de l'utilisateur proprié
 
 | Méthode | URL                      | Description                                              |
 |---------|---------------------------|------------------------------------------------------------|
-| GET     | /candidatures             | Lister les candidatures de l'utilisateur connecté (paginé)  |
+| GET     | /candidatures             | Lister les candidatures de l'utilisateur connecté (paginé, triable, filtrable) |
 | GET     | /candidatures/{id}        | Récupérer une candidature (si elle appartient à l'utilisateur) |
 | POST    | /candidatures             | Créer une nouvelle candidature                             |
 | PUT     | /candidatures/{id}        | Modifier une candidature existante                          |
@@ -195,17 +197,24 @@ Révoque immédiatement tous les refresh tokens actifs de l'utilisateur proprié
 | GET     | /candidatures/stats       | Récupérer les statistiques des candidatures de l'utilisateur connecté |
 | GET     | /candidatures/{id}/history| Récupérer l'historique des changements de statut d'une candidature |
 
-### Pagination et tri (`GET /candidatures`)
+### Pagination, tri et filtrage (`GET /candidatures`)
 
-Paramètres de requête optionnels :
+Tous les paramètres de requête sont **optionnels** et combinables entre eux.
 
 | Paramètre | Exemple | Description |
 |---|---|---|
 | `page` | `?page=0` | Numéro de page (commence à 0) |
 | `size` | `?size=10` | Nombre d'éléments par page |
 | `sort` | `?sort=date,desc` | Champ de tri et sens (`asc` / `desc`) |
+| `statut` | `?statut=EN_ATTENTE` | Filtre sur le statut (valeur exacte de l'enum) |
+| `entreprise` | `?entreprise=cap` | Nom d'entreprise **contenant** la saisie, insensible à la casse |
+| `dateDebut` | `?dateDebut=2026-01-01` | Candidatures dont la `date` est postérieure ou égale à cette date |
+| `dateFin` | `?dateFin=2026-01-31` | Candidatures dont la `date` est antérieure ou égale à cette date |
 
-Exemple : `GET /candidatures?page=0&size=10&sort=date,desc`
+Les dates utilisent le format `yyyy-MM-dd` et portent sur le champ `date` (date de candidature), et non sur `derniereMisAJour`. Les deux bornes sont inclusives et indépendantes : on peut n'en fournir qu'une seule.
+
+Exemple :
+`GET /candidatures?statut=EN_ATTENTE&entreprise=cap&dateDebut=2026-01-01&dateFin=2026-01-31&page=0&size=10&sort=date,desc`
 
 Réponse :
 ```json
@@ -218,6 +227,24 @@ Réponse :
   "content": [ ... ]
 }
 ```
+
+**Règles et erreurs**
+
+| Cas | Code |
+|---|---|
+| Statut invalide (`?statut=BLABLA`) | 400 |
+| Format de date invalide (`?dateDebut=abc`) | 400 |
+| `dateDebut` postérieure à `dateFin` | 400 |
+| `dateDebut` égale à `dateFin` | 200 (candidatures de ce jour) |
+| Aucun résultat | 200 avec `content` vide |
+
+La validation de la plage de dates est effectuée avant tout accès à la base de données.
+
+**Isolation des données** : le filtre sur l'utilisateur connecté est toujours appliqué. Il constitue la base de la requête et ne dépend d'aucun paramètre : un utilisateur ne peut jamais voir les candidatures d'un autre, quels que soient les filtres envoyés.
+
+**Implémentation** : chaque filtre est une `Specification<Candidature>` (classe `CandidatureSpecifications`). La méthode `search` part de la condition sur l'utilisateur, puis ajoute une condition par filtre uniquement si le paramètre est renseigné. `CandidatureService.searchCandidatureBy` exécute la requête via `CandidatureRepository.findAll(spec, pageable)` (interface `JpaSpecificationExecutor`), ce qui permet de conserver la pagination et le tri existants.
+
+**Limite connue** : dans le filtre `entreprise`, les caractères `%` et `_` ne sont pas échappés et sont interprétés comme des jokers par le `LIKE` (par exemple `?entreprise=%` renvoie toutes les candidatures de l'utilisateur). Il n'y a ni fuite de données ni injection SQL (la valeur est paramétrée et le filtre utilisateur reste appliqué), mais le comportement n'est pas celui d'une recherche littérale.
 
 ### Statistiques (`GET /candidatures/stats`)
 
@@ -376,6 +403,8 @@ Les erreurs sont centralisées et renvoyées au format JSON.
 }
 ```
 
+**Paramètres de filtrage invalides (400)** : statut inconnu, date mal formatée, ou `dateDebut` postérieure à `dateFin` (voir [Pagination, tri et filtrage](#pagination-tri-et-filtrage-get-candidatures)).
+
 **Documents**
 
 | Cas | Code |
@@ -406,6 +435,8 @@ Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resourc
 - `V9` : table `fichier` (métadonnées des documents)
 - `V10` : contrainte `UNIQUE (candidature_id, type_document)` sur `fichier`
 
+Le filtrage avancé n'a nécessité aucune migration : il s'appuie sur les colonnes existantes.
+
 `spring.jpa.hibernate.ddl-auto` est configuré sur `validate` : Hibernate vérifie que les entités correspondent au schéma, mais ne le modifie jamais lui-même.
 
 ## Lancer les tests
@@ -415,6 +446,8 @@ Le schéma est géré par Flyway. Les scripts se trouvent dans `src/main/resourc
 ```
 
 Inclut des tests unitaires sur le contrôleur des candidatures (repositories mockés, contexte de sécurité simulé), sur le gestionnaire d'erreurs centralisé, ainsi que sur le service de refresh tokens (création, rotation, détection de réutilisation avec révocation en cascade, expiration, logout).
+
+Le filtrage des candidatures est couvert côté contrôleur (service mocké) : appel avec tous les filtres (vérification que chaque paramètre est transmis au bon emplacement), appel sans aucun filtre (paramètres à `null`), et plage de dates inversée (exception levée avant tout appel au service). Les `Specification` elles-mêmes ne sont pas encore testées contre une vraie base (un `@DataJpaTest` serait nécessaire).
 
 Les documents sont aussi couverts : validation des PDF, service de stockage (répertoire temporaire : écriture, lecture, suppression, path traversal, nettoyage après écriture interrompue) et service de fichiers (compensation après échec en base, suppression différée après commit).
 

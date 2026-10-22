@@ -3,6 +3,8 @@ package JobTrack;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
+
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import JobTrack.Exceptions.CandidatureNotFoundException;
 import jakarta.validation.Valid;
@@ -43,9 +46,18 @@ public class CandidatureController {
     }
 
     @GetMapping("/candidatures")
-    public PageResponseDTO<CandidatureResponseDTO> getCandidatures(Pageable pageable) {
+    public PageResponseDTO<CandidatureResponseDTO> getCandidatures(
+        @RequestParam(required = false) Statut statut,                                                            
+        @RequestParam(required = false) String entreprise,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin,
+        Pageable pageable) {
+        
+        if(dateDebut!=null && dateFin!=null && !(dateDebut.isBefore(dateFin) || dateDebut.isEqual(dateFin))){
+            throw new IllegalArgumentException("dateDebut doit etre inferieure ou egale a dateFin !");
+        }
         User currentUser = getCurrentUser();
-        Page<Candidature> page = candidatures.findByUser(currentUser,pageable);
+        Page<Candidature> page = candidatureService.searchCandidatureBy(currentUser,statut,entreprise,dateDebut,dateFin,pageable);
         return new PageResponseDTO<CandidatureResponseDTO>(page.getNumber(),page.getSize(), page.getTotalElements(), page.getTotalPages(), page.isLast(), page.map(CandidatureResponseDTO::fromCandidature).toList());
     }
 
@@ -119,4 +131,6 @@ public class CandidatureController {
         List<CandidatureStatusHistory> liste = candidatureStatusHistoryRepository.findByCandidatureOrderByDateDeChangementDesc(candidature);
         return ResponseEntity.ok(liste);
     }   
+
+    
 }
